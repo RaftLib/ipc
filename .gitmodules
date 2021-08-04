@@ -1,0 +1,3 @@
+[submodule "git-dep/shm"]
+	path = git-dep/shm
+	url = https://github.com/RaftLib/shm.git

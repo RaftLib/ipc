@@ -1,0 +1,207 @@
+// vim: set filetype=cpp:
+/**
+ * shm.hpp - 
+ * Copyright 2014 Jonathan Beard
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * @author: Jonathan Beard
+ * @version: Thu Aug  1 14:26:34 2013
+ */
+#ifndef _SHM_HPP_
+#define _SHM_HPP_  1
+
+#include <cstdlib>
+#include <utility>
+#include <exception>
+#include <string>
+
+
+class SHMException : public std::exception
+{
+public:
+   SHMException( const std::string &message );
+   
+   SHMException( const std::string &&message );
+   
+   virtual const char* what() const noexcept;
+private:
+   const std::string message;
+};
+
+template < int N > class TemplateSHMException : public SHMException 
+{
+public:
+    TemplateSHMException(  const std::string &message ) : SHMException( message ){};
+    TemplateSHMException(  const std::string &&message ) : SHMException( 
+    std::forward< decltype( message ) >( message ) ){};
+};
+
+using bad_shm_alloc                      = TemplateSHMException< __COUNTER__ >;
+using shm_already_exists                 = TemplateSHMException< __COUNTER__ >;
+using page_alignment_exception           = TemplateSHMException< __COUNTER__ >;
+using invalid_key_exception              = TemplateSHMException< __COUNTER__ >;
+
+
+class shm{
+public:
+   
+   shm()    = delete;
+   ~shm()   = delete;
+   
+   /**
+    * genkey - generate a random key to be stored
+    * in the std::string key. The key will be hashed
+    * to ensure that no two keys will be identical,
+    * this function is thread safe. 
+    *
+    * @param   key - std::string&
+    * @param   length - const std::size_t
+    */
+   static void genkey( std::string &key, const std::size_t length );
+
+   /**
+    * init - initialize SHM segment with file descriptor
+    * key, with the number of items (nitems) and number
+    * of bytes each for each item (nbytes).  Throws exceptions
+    * upon error which should either be cought or ignored
+    * depending on how robust the user wants the program
+    * to be. Function call will exit on failure to open
+    * "/dev/urandom" and also on failure to read, future
+    * implementations will have proper exceptions for these.
+    * @param   key - const char *
+    * @param   nbytes - std::size_t
+    * @param   zero  - zero before returning memory, default: true
+    * @return  void* - ptr to beginning of memory allocated
+    * @exception - 
+    */
+   static void*   init( const std::string &key, 
+                        const std::size_t nbytes,
+                        const bool   zero = true,
+                        void   *ptr = nullptr );
+
+   /** 
+    * open - opens the shared memory segment with the file
+    * descriptor stored at key.
+    * @param   key - const std::string&, initialized key
+    * @return  void* - start of allocated memory, or NULL if
+    *                  error
+    */
+   static void*   open( const std::string &key );
+
+   /**
+    * close - returns true if successful, false otherwise.
+    * multiple exceptions are possible, such as invalid key
+    * if the key is invalid then it is possible that the 
+    * memory will be unmapped while the file handle is still
+    * open.  A call to this funciton with a valid file and
+    * nullptr for ptr then the function will skip all the 
+    * unmapping and go for the unlinking.  An exception is
+    * thrown for unlinking errors, in the fiture we'll catch
+    * all the error codes but at the moment the exception
+    * simply returns invalid file and a generic message for 
+    * all others.
+    * @param   key - const char*
+    * @param   ptr - ptr to start of mapped region
+    * @param   nbytes - number of bytes for each element in mapped region
+    * @param   zero  - zero mapped region before closing, default: false
+    * @param   unlink - call unlink, decrement OS open count for handle
+    * @return  bool - true if successful.
+    */
+   static bool    close( const std::string &key, 
+                         void **ptr,
+                         const std::size_t nbytes,
+                         const bool   zero = false ,
+                         const bool   unlink = false );
+
+   
+   /**
+    * einit - simple wrapper around shm::init, basically
+    * just casts your void* for you.
+    * @param - key, std::string&& with key
+    * @param - nitems, number of items to init of type T
+    */
+   template < class T > 
+      static T* einit( const std::string &&key,
+                       const std::size_t nitems )
+   {
+      return( reinterpret_cast< T* >( 
+         shm::init( key,
+                    nitems * sizeof( T ),
+                    true,
+                    nullptr ) ) );
+   }
+   
+   /**
+    * einit - simple wrapper around shm::init, basically
+    * just casts your void* for you.
+    * @param - key, std::string& with key
+    * @param - nitems, number of items to init of type T
+    */
+   template < class T > 
+      static T* einit( const std::string &key,
+                       const std::size_t nitems )
+   {
+      return( reinterpret_cast< T* >( 
+         shm::init( key,
+                    nitems * sizeof( T ),
+                    true,
+                    nullptr ) ) );
+   }
+
+   /**
+    * eopen - simple wrapper around shm::open, casts the pointer
+    * for you and returns a type T.
+    * @param - key, std::string&&
+    */
+   template < class T >
+      static T* eopen( const std::string &&key )
+   {
+      return( reinterpret_cast< T* >( shm::open( key ) ) );
+   }
+
+   /**
+    * eopen - simple wrapper around shm::open, casts the pointer
+    * for you and returns a type T.
+    * @param - key, std::string&
+    */
+   template < class T >
+      static T* eopen( const std::string &key )
+   {
+      return( reinterpret_cast< T* >( shm::open( key ) ) );
+   }
+   /**
+    * move_to_tid_numa - checks the pages at 'pages' pointer,
+    * and makes sure that they are on the NUMA node of the 
+    * calling thread. If the pages are not on the same 
+    * NUMA node as the caller then the appropriate system
+    * calls are made to migrate the pages and false is 
+    * returned, otherwise they are left alone and true 
+    * is returned.
+    * @param   thread_id - pid_t, id of calling thread
+    * @param   pages - void*, start pointer of pages, must
+    * be page aligned.
+    * @param   n_bytes - std::size_t, length of the allocation
+    * in pages, must be a multiple of pages, otherwise an 
+    * exception will be thrown
+    */
+   static bool move_to_tid_numa( const pid_t thread_id,
+                                 void *ptr,
+                                 const std::size_t n_bytes );
+
+private:
+    static const std::int32_t success = 0;
+    static const std::int32_t failure = -1;
+                           
+};
+
+#endif /* END _SHM_HPP_ */
