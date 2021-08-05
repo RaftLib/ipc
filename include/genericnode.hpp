@@ -112,8 +112,10 @@ struct nodebase
  */
     node_t    _type   =   ipc::nodebase::dummy;
     //THESE WE WANT ON SAME CACHE LINE
+#pragma pack( push, 1 )    
     std::atomic< ipc::ptr_offset_t >        next    =   {ipc::nodebase::init_offset()};
-    ipc::ptr_offset_t        prev    =   ipc::nodebase::init_offset();
+    ipc::ptr_offset_t                       prev    =   ipc::nodebase::init_offset();
+#pragma pack( pop )    
 };
 
 

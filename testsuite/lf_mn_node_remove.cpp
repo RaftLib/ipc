@@ -43,6 +43,8 @@ int main()
 
     auto *channel_info_obj = 
         new (temp) ipc::channel_info( 0 );
+    std::cout << "starting channel info:\n";
+    std::cout << *channel_info_obj << "\n";
 
     auto *dummy = 
         new (temp)   ipc::record_index_t;
@@ -70,6 +72,9 @@ int main()
             ipc::record_index_t( 2, ipc::nodebase::normal, 12 );
     const auto record_2_offset = 
         ipc::translate_helper::calculate_block_offset( temp, record_2 );
+    
+    std::cout << "before push channel info:\n";
+    std::cout << *channel_info_obj << "\n";
 
     
     if( lf_queue_t::push( channel_info_obj, record_0, buffer ) != ipc::tx_success )
@@ -109,14 +114,6 @@ int main()
     ipc::record_index_t *receive_node = nullptr;
     //with dummy node, we should get one retry    
     ipc::tx_code code = ipc::tx_success;
-    if( (code = lf_queue_t::pop( channel_info_obj, &receive_node , buffer )) != ipc::tx_retry )
-    {
-        //figure out what to print here
-        std::cout << "(expected retry) return code: " << code << "\n";
-        print();
-        free( buffer );
-        return( EXIT_FAILURE );
-    }
     //one success
     if( (code = lf_queue_t::pop( channel_info_obj, &receive_node , buffer )) != ipc::tx_success )
     {

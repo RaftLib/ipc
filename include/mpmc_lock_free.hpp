@@ -22,6 +22,7 @@
 #include "bufferdefs.hpp"
 #include <cassert>
 #include <atomic>
+#include <unistd.h>
 
 namespace ipc
 {
@@ -97,7 +98,7 @@ public:
             
         bool success( false );
 
-        node_to_add->prev = channel->ctrl_all.data_tail;
+        node_to_add->prev = channel->ctrl_all.data_tail.load( std::memory_order_seq_cst );
         
         const auto node_block_address = 
             TRANSLATE::calculate_block_offset( buffer_base, node_to_add );
@@ -109,7 +110,7 @@ public:
              channel->ctrl_all.data_tail.compare_exchange_strong( 
                          node_to_add->prev  /** expected ref **/,
                          node_block_address /** desired value **/,
-                         std::memory_order_release /** memory order success **/,
+                         std::memory_order_relaxed /** memory order success **/,
                          std::memory_order_relaxed /** memory order failure **/ );
 
         }
@@ -118,7 +119,7 @@ public:
             (LOCKFREE_NODE*) TRANSLATE::translate_block( buffer_base, 
                                                          node_to_add->prev );
 
-        prev->next.store( node_block_address, std::memory_order_relaxed );
+        prev->next.store( node_block_address, std::memory_order_seq_cst );
 
         return( ipc::tx_success );
     }
@@ -145,86 +146,48 @@ public:
          * get these atomically, might just need a fence, 
          * but...dies on all arch with -O2 and above. 
          */
-        ipc::ptr_offset_t local_head_offset    = ipc::invalid_ptr_offset;
-        ipc::ptr_offset_t local_tail_offset    = ipc::invalid_ptr_offset;
-
-
 
         //load up current head into a local copy
-        local_head_offset = 
+        const auto local_head_offset = 
             channel->ctrl_all.data_head.load( std::memory_order_relaxed );
 
         //translate local head to an actual address
-        auto *local_head_ptr = 
+        auto *dummy_ptr = 
             (LOCKFREE_NODE*) TRANSLATE::translate_block( buffer_base, 
                                                          local_head_offset );
-        auto local_next_offset = 
-            local_head_ptr->next.load( std::memory_order_relaxed );
+        auto dummy_next = 
+             dummy_ptr->next.load( std::memory_order_seq_cst );
         
-        local_tail_offset = 
-            channel->ctrl_all.data_tail.load( std::memory_order_relaxed );
-
-
-        
-        if( local_head_offset == local_tail_offset )
+        //we need to get next.next
+        if( dummy_next == ipc::nodebase::init_offset() )
         {
-            if( local_head_ptr->_type == ipc::nodebase::dummy )
-            {
-                return( ipc::tx_retry );
-            }
-            else
-            {
-                //single node, non-dummy, let's add one so we can proceed
-                auto *dummy_ptr = (LOCKFREE_NODE*) TRANSLATE::translate_block( buffer_base, 
-                                                                               channel->meta.dummy_node_offset );
-                self_t::push( channel, dummy_ptr, buffer_base );
-                return( ipc::tx_retry );
-            }
-        }
-        else if( local_next_offset == ipc::nodebase::init_offset() )
-        {
-            
-            //head != tail, but still no local_next...
-            //safe thing is to wait and come around again
+            //need to figure out memory ordering issue here. clearly the 
+            //store above isn't getting here.
+            //FIXME
+            //sleep( 0 );
             return( ipc::tx_retry );
         }
-        else
+        
+        auto *node_to_remove = 
+            (LOCKFREE_NODE*) TRANSLATE::translate_block( buffer_base,
+                                                         dummy_next );
+        //we need to take node_to_remove.next and make that the dummy.next
+
+        const bool
+        success = dummy_ptr->next.compare_exchange_strong(
+            dummy_next,
+            node_to_remove->next.load( std::memory_order_seq_cst ),
+            std::memory_order_release /** memory order success **/,
+            std::memory_order_relaxed /** memory order failure **/ );
+        
+        if( success )
         {
-            /** swing our block value in as tail **/
-            const bool
-            success = 
-             channel->ctrl_all.data_head.compare_exchange_weak( 
-                         local_head_offset  /** expected ref **/,
-                         local_next_offset  /** desired value **/,
-                         std::memory_order_release /** memory order success **/,
-                         std::memory_order_relaxed /** memory order failure **/ );
-            if( success )
-            {
-                auto *success_local_head_ptr = 
-                    (LOCKFREE_NODE*) TRANSLATE::translate_block( buffer_base, 
-                                                                 local_head_offset );
-                /**
-                 * no need to go back and get the channel offset, if it's 
-                 * the dummy, there's only one, push it. 
-                 */
-                if( success_local_head_ptr->_type == ipc::nodebase::dummy )
-                {
-                    self_t::push( channel, success_local_head_ptr, buffer_base );
-                    return( ipc::tx_retry );
-                }
-                else
-                {
-                    *receive_node =  success_local_head_ptr;
-                    return( ipc::tx_success );
-                }
-            }
-            else
-            {
-                return( ipc::tx_retry );
-            }
+                //node_to_remove->next = ipc::nodebase::init_offset();
+                //node_to_remove->prev = ipc::nodebase::init_offset();
+                *receive_node = node_to_remove;
+                return( ipc::tx_success );
         }
         return( ipc::tx_retry );
-
     }
 
 private:
