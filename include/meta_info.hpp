@@ -42,7 +42,6 @@ class meta_info :
 #endif
 {
 private:
-    using sem_buffer_t = char[ semaphore_length ];
 
 public:
     

@@ -37,6 +37,7 @@ struct alignas( L1D_CACHE_LINE_SIZE ) ch_meta_all
     ipc::refcnt_t      ref_count                         = 0; 
     
     ipc::channel_type  type                              = ipc::spsc; 
+    sem_buffer_t                    channel_semaphore    = { '\0' };
     /**
      * FIXME - consider making these a union or template dep.
      * vs. extra space, for right now we're eating up an entire 

@@ -361,13 +361,13 @@ ipc::buffer::add_spsc_lf_channel(   ipc::thread_local_data *data,
     return( ipc::buffer::add_channel( data, channel_id, ipc::spsc ) );
 }
 
-ipc::channel_id_t
-ipc::buffer::add_mn_lf_channel(   ipc::thread_local_data *data, 
-                            const channel_id_t channel_id )
-{
-    return( ipc::buffer::add_channel( data, channel_id, ipc::mpmc ) );
-}
-
+//ipc::channel_id_t
+//ipc::buffer::add_mn_lf_channel(   ipc::thread_local_data *data, 
+//                            const channel_id_t channel_id )
+//{
+//    return( ipc::buffer::add_channel( data, channel_id, ipc::mpmc ) );
+//}
+//
 
 ipc::channel_id_t
 ipc::buffer::find_channel( ipc::thread_local_data *data,
