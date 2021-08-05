@@ -29,6 +29,6 @@ set( TESTAPPS #list apps
 
 foreach( APP ${TESTAPPS} )
  add_executable( "${APP}_buffer" "${APP}.cpp" )
- target_link_libraries( "${APP}_buffer" buffer heapalloc pthread atomic rt )
+ target_link_libraries( "${APP}_buffer" buffer heapalloc pthread atomic rt ${CMAKE_NUMA_LIB} )
  add_test( NAME "${APP}_buffer_test" COMMAND "${APP}_buffer" )
 endforeach( APP ${TESTAPPS} )
