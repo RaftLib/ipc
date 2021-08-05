@@ -29,7 +29,7 @@
 #include <thread>
 #include <atomic>
 
-#define DEBUG 1
+#undef DEBUG 
 
 using lf_queue_t = 
     ipc::mpmc_lock_free_queue< ipc::channel_info      /** control region **/, 
@@ -62,7 +62,7 @@ void producer(  const std::size_t count,
         while( lf_queue_t::push( ch_info, record, buffer ) != ipc::tx_success );
     }
 #if DEBUG    
-    std::cout << "completed push sequency\n";
+    std::cout << "completed push sequence\n";
 #endif    
     return;
 }
@@ -87,9 +87,11 @@ void consumer( const std::size_t count,
         }
         if( record != nullptr )
         {
-//#if DEBUG
-//            std::cout << "(" << record->_id << ") - (" << count_tracker << ")\n";
-//#endif
+#if DEBUG
+            std::cout << "(" << record->_id << ") - (" << count_tracker << ")\n";
+            std::cout << *record << "\n";
+            std::cout << *ch_info << "\n";
+#endif
             if( record->_id != count_tracker)
             {
                 std::cerr << "buffer failed async tests @ consumer, (" << 
@@ -134,8 +136,8 @@ int main()
     lf_queue_t::init( channel_info_obj, dummy, buffer );
 
     //max count is 30 - 12 or (1<<18)
-    //const auto count = (1<<12);
-    const auto count = 16;
+    const auto count = (1<<12);
+    //const auto count = 16;
     std::thread source( producer, count, channel_info_obj, buffer, std::ref( gate ) );
     
     std::thread dest  ( consumer, count, channel_info_obj, buffer, std::ref( gate ) );

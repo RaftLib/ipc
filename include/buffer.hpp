@@ -262,9 +262,9 @@ public:
      * ipc::channel_err - channel could not be inserted due to some
      * error. 
      */
-    static
-    channel_id_t add_mn_lf_channel( ipc::thread_local_data *tls, 
-                                    const channel_id_t channel_id );
+    //static
+    //channel_id_t add_mn_lf_channel( ipc::thread_local_data *tls, 
+    //                                const channel_id_t channel_id );
     
     /**
      * add_channel - this function could be called per thread to 

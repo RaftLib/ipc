@@ -45,6 +45,7 @@ namespace ipc
      * max semaphore length.
      */
     static constexpr auto semaphore_length  = 24;
+    using sem_buffer_t = char[ semaphore_length ];
     /** 
      * ptr_offset_t - to represent offsets within 
      * linked lists and like things inside our 

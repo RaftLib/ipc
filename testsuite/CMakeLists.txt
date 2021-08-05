@@ -9,10 +9,10 @@ set( TESTAPPS #list apps
         locked_node_insert
         locked_node_remove
         locked_node_find
-        lf_mn_node_insert
-        lf_mn_node_remove
-        lf_mn_node_pop
-        lf_mn_node_insert_remove_twothreads
+        #lf_mn_node_insert
+        #lf_mn_node_remove
+        #lf_mn_node_pop
+        #lf_mn_node_insert_remove_twothreads
         lf_spsc_node_insert_remove
         lf_spsc_node_insert_remove_twothreads
         calculateOffset
