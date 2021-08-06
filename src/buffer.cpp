@@ -227,7 +227,7 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         // Create new node -- will have to acquire allocation semaphore
         // BEWARE - we already grabbed index semaphore, they're now nested
         std::size_t blocks_to_allocate = channel_info_multiple + meta_multiple;
-
+        
         void *mem_for_new_channel = 
             ipc::buffer::global_buffer_allocate(  data, 
                                                   blocks_to_allocate,
@@ -273,27 +273,26 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         new (mem_for_new_channel) ipc::channel_index_t( channel_id            /** id **/,
                                                         ipc::nodebase::normal /** node type **/,
                                                         channel_id );
-        
-        auto dummy_info_multiple  = 
-            ipc::buffer::heap_t::get_block_multiple( sizeof( ipc::record_index_t ) );
-        
-        void *mem_for_dummy_node = 
-            ipc::buffer::global_buffer_allocate(  data, 
-                                                  dummy_info_multiple,
-                                                  true ); 
-
-
-        auto *dummy_record = new (mem_for_dummy_node) ipc::record_index_t( ipc::nodebase::dummy );
-        
         channel = &(**node_to_add);
-
-        channel->meta.dummy_node_offset = 
-            ipc::buffer::calculate_block_offset( &data->buffer->data, dummy_record );
     
         switch( channel->meta.type )
         {
             case( ipc::mpmc ):
             {
+                auto dummy_info_multiple  = 
+                    ipc::buffer::heap_t::get_block_multiple( sizeof( ipc::record_index_t ) );
+                
+                void *mem_for_dummy_node = 
+                    ipc::buffer::global_buffer_allocate(  data, 
+                                                          dummy_info_multiple,
+                                                          true ); 
+
+
+                auto *dummy_record = new (mem_for_dummy_node) ipc::record_index_t( ipc::nodebase::dummy );
+                
+
+                channel->meta.dummy_node_offset = 
+                    ipc::buffer::calculate_block_offset( &data->buffer->data, dummy_record );
                 ipc::buffer::mpmc_lock_free::init( channel, 
                                                    dummy_record,
                                                    &data->buffer->data );

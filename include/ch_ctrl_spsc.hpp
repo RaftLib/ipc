@@ -28,9 +28,6 @@ namespace ipc
 
 struct alignas(L1D_CACHE_LINE_SIZE)  ch_ctrl_spsc
 {
-    static constexpr auto wrap_padding_constant = 
-                    ipc::findpad< L1D_CACHE_LINE_SIZE, ipc::wrap_t >::calc();
-
     //these are for the spsc channels 
     alignas( L1D_CACHE_LINE_SIZE ) ipc::wrap_t                     wrap_head   = {0};
     

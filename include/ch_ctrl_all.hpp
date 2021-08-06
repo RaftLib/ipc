@@ -27,9 +27,6 @@ namespace ipc
 
 struct alignas(L1D_CACHE_LINE_SIZE) ch_ctrl_all
 {
-    static constexpr auto ctrl_padding_constant = 
-                    ipc::findpad< L1D_CACHE_LINE_SIZE, ipc::ptr_offset_t >::calc();
-    
     /** start of data allocated **/
     alignas( L1D_CACHE_LINE_SIZE ) ipc::ctrl_ptroffset_t    data_head   = { ipc::invalid_ptr_offset };
     

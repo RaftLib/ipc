@@ -324,7 +324,7 @@ public:
      * IMPORTANT, KEEP LAST
      * the buffer_base struct is laid out before this one and is block_size aligned.
      */
-    ipc::byte_t           data[ 1 ];
+    alignas( 1<< ipc::block_size_power_two ) ipc::byte_t           data[ 1 ];
 
 };
 

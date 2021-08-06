@@ -33,7 +33,6 @@
 namespace ipc
 {
 
-#pragma pack(push, 1 )
 struct nodebase
 {
    
@@ -112,10 +111,8 @@ struct nodebase
  */
     node_t    _type   =   ipc::nodebase::dummy;
     //THESE WE WANT ON SAME CACHE LINE
-#pragma pack( push, 1 )    
     std::atomic< ipc::ptr_offset_t >        next    =   {ipc::nodebase::init_offset()};
     ipc::ptr_offset_t                       prev    =   ipc::nodebase::init_offset();
-#pragma pack( pop )    
 };
 
 
@@ -143,7 +140,6 @@ public:
 template < class T >
            struct alignas( L1D_CACHE_LINE_SIZE ) node : nodebase
 {
-    static constexpr auto padding = ipc::findpad< L1D_CACHE_LINE_SIZE, T, nodebase >::calc();
     
     constexpr node() : nodebase(){};
 
@@ -159,8 +155,6 @@ template < class T >
                                               ele( std::forward< Args >( node_params )... ){}
 
 
-    static_assert( padding != 0, "Something very bad has happened, struct padd + obj size cannot be zero" );
-    
     /**
      * this version uses compare of the 
      * element type.
@@ -178,14 +172,12 @@ template < class T >
     {
         return( ele );
     }
-
-    T                       ele;
-    std::uint8_t            _PADDING[ padding] = { 1 };
+    
+    alignas( 1 << ipc::block_size_power_two ) T                       ele;
 };
 
 
 
-#pragma pack(pop)   
 
 
 } /** end namespace trace_buffer **/

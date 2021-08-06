@@ -28,6 +28,11 @@ namespace ipc
 struct alignas( (1<<ipc::block_size_power_two) ) ch_entries_spsc
 {
     
+    constexpr ch_entries_spsc()
+    {
+
+    };
+
     static constexpr auto n_entries = 
         ( 1 << ipc::block_size_power_two) / sizeof( ipc::ptr_offset_t );
 
