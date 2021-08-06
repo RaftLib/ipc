@@ -48,7 +48,12 @@ struct channel_info
     constexpr channel_info( const ipc::channel_id_t ch_id ) : meta( ch_id ),
                                                               ctrl_all(),
                                                               ctrl_spsc(),
-                                                              spsc_q() {}
+                                                              spsc_q() 
+    {
+
+    }
+
+
     ipc::ch_meta_all        meta;
     ipc::ch_ctrl_all        ctrl_all;
     ipc::ch_ctrl_spsc       ctrl_spsc;

@@ -70,12 +70,13 @@ ipc::buffer::initialize( const std::string shm_handle )
     catch( shm_already_exists &ex )
     {
         auto *output( shm::eopen< ipc::buffer >( shm_handle ) );
-        while( output->cookie != ipc::buffer::cookie_in_use )
+        while( output->cookie.load( std::memory_order_relaxed )
+            != ipc::buffer::cookie_in_use )
         {
             //spin while parent is setting things up.
-            //should work for many architectures but...need to double check
             __asm__ volatile( "nop" : : : );
         }
+        output->buffer_refcount++;
         return( output );
     }
     catch( bad_shm_alloc &ex )
@@ -85,7 +86,7 @@ ipc::buffer::initialize( const std::string shm_handle )
         std::cout << ex.what() << "\n";
         exit( EXIT_FAILURE );
     }
-
+    
     //we're here, then we're the first ones, lots to do.
     /**
      * STEP 1, set up semaphore name and semaphore for alloc
@@ -156,11 +157,34 @@ ipc::buffer::initialize( const std::string shm_handle )
     out_buffer->databuffer_size     = buffer_size_nbytes;
     
 
-    out_buffer->cookie              = ipc::buffer_base::cookie_in_use;
-    
     sem_close( sem_alloc.second );
     sem_close( sem_index.second );
+    out_buffer->buffer_refcount++;    
+    out_buffer->cookie.store( ipc::buffer_base::cookie_in_use, 
+                                std::memory_order_relaxed );
+   
+
+    
+    //FIXME - implement crash log to kill off the sem and shm handle
     return( out_buffer );
+}
+
+std::string 
+ipc::buffer::get_tmp_dir()
+{
+#if defined __linux 
+    char *dir = getenv( "TMPDIR" );
+    if( dir != nullptr )
+    {
+        return( std::string( dir ) );
+    }
+    else
+    {
+        return( "/tmp" );
+    }
+#else
+#warning "not yet implemented"
+#endif
 }
 
 void
@@ -175,13 +199,14 @@ ipc::buffer::destruct( ipc::buffer *b,
         sem_unlink( b->index_sem_name );
         sem_unlink( b->alloc_sem_name );
     }
-    //FIXME, might need to make sure nobody is still using
-    //the FIFOs internally, spin till done
-    shm::close( shm_handle,
-                (void**)&b,
-                b->allocated_size,
-                false,
-                unlink );
+    if( --b->buffer_refcount == 0 )
+    {
+        shm::close( shm_handle,
+                    (void**)&b,
+                    b->allocated_size,
+                    false,
+                    unlink );
+    }
     return;
 }
 
@@ -227,7 +252,7 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         // Create new node -- will have to acquire allocation semaphore
         // BEWARE - we already grabbed index semaphore, they're now nested
         std::size_t blocks_to_allocate = channel_info_multiple + meta_multiple;
-
+        
         void *mem_for_new_channel = 
             ipc::buffer::global_buffer_allocate(  data, 
                                                   blocks_to_allocate,
@@ -245,7 +270,8 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         }
         
         const auto meta_offset = 
-            ipc::buffer::calculate_block_offset( &data->buffer->data, mem_for_new_channel );
+            ipc::buffer::calculate_block_offset( &data->buffer->data, 
+                                                 mem_for_new_channel );
 
 
         /** need to calculate channel start, don't change pointer yet, we need that **/
@@ -273,27 +299,27 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         new (mem_for_new_channel) ipc::channel_index_t( channel_id            /** id **/,
                                                         ipc::nodebase::normal /** node type **/,
                                                         channel_id );
-        
-        auto dummy_info_multiple  = 
-            ipc::buffer::heap_t::get_block_multiple( sizeof( ipc::record_index_t ) );
-        
-        void *mem_for_dummy_node = 
-            ipc::buffer::global_buffer_allocate(  data, 
-                                                  dummy_info_multiple,
-                                                  true ); 
-
-
-        auto *dummy_record = new (mem_for_dummy_node) ipc::record_index_t( ipc::nodebase::dummy );
-        
         channel = &(**node_to_add);
-
-        channel->meta.dummy_node_offset = 
-            ipc::buffer::calculate_block_offset( &data->buffer->data, dummy_record );
     
         switch( channel->meta.type )
         {
             case( ipc::mpmc ):
             {
+                //set up dummy node for LF queue 
+                auto dummy_info_multiple  = 
+                    ipc::buffer::heap_t::get_block_multiple( sizeof( ipc::record_index_t ) );
+                
+                void *mem_for_dummy_node = 
+                    ipc::buffer::global_buffer_allocate(  data, 
+                                                          dummy_info_multiple,
+                                                          true ); 
+
+
+                auto *dummy_record = new (mem_for_dummy_node) ipc::record_index_t( ipc::nodebase::dummy );
+                
+
+                channel->meta.dummy_node_offset = 
+                    ipc::buffer::calculate_block_offset( &data->buffer->data, dummy_record );
                 ipc::buffer::mpmc_lock_free::init( channel, 
                                                    dummy_record,
                                                    &data->buffer->data );
@@ -309,7 +335,6 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
 
         }
 
-        //set up dummy node for LF queue 
         
         channel->meta.type = type;
         if( ! ipc::buffer::channel_list_t::insert( &(data->buffer->data), 
@@ -330,9 +355,15 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
      * else, find_channel_buffer_offset function has set channel ptr to something valid
      * and the output contains the pointer to channel_info. 
      */
+    channel->meta.ref_count++ /** atomic inc **/;
 
 POST:
     // Release semaphore
+    /**
+     * keep in mind, we jump here if we can't allocate memory too, 
+     * so check ret channel pointer for null below before adding it
+     * to the TLS. 
+     */
     if( sem_post( sem ) != 0 )
     {
         std::perror( "Failed to post semaphore, exiting given we can't recover from this!" );
@@ -340,17 +371,13 @@ POST:
         exit( EXIT_FAILURE );
     }
     
-
-    channel->meta.ref_count++ /** atomic inc **/;
-    assert( channel != nullptr );
-    assert( channel_start >= 0 );
-#if DEBUG
-    std::cerr << (*channel) << "\n";
-#endif 
-    /** insert zero count allocation struct into local calling TLS **/
-    data->channel_local_allocation.insert( std::make_pair( channel_id, ipc::local_allocation_info() ) ); 
-    /** insert channel structure into calling TLS **/
-    data->channel_map.insert( std::make_pair( channel_id, channel ) );
+    if( channel != nullptr /** only case if we couldn't allocate mem **/ )
+    {
+        /** insert zero count allocation struct into local calling TLS **/
+        data->channel_local_allocation.insert( std::make_pair( channel_id, ipc::local_allocation_info() ) ); 
+        /** insert channel structure into calling TLS **/
+        data->channel_map.insert( std::make_pair( channel_id, channel ) );
+    }
     return( channel_start );
 }
 
@@ -396,19 +423,11 @@ ipc::buffer::find_channel( ipc::thread_local_data *data,
     }
     return( output );
 }
-ipc::ptr_offset_t
+
+bool
 ipc::buffer::remove_channel( ipc::thread_local_data *data, 
                              const channel_id_t channel_id )
 {
-
-    /** 
-     * once we add multiple channels per thread we'll 
-     * need to add a std::map or something to the 
-     * thread_data structure so that we can lookup
-     * the specific offset of the called chanel, but
-     * for right now we have a direct lookup of the 
-     * channel we want to acquire.
-     */
     /** acquire sem **/
     auto *sem = data->index_semaphore;
     if( sem_wait( sem ) != 0 )
@@ -448,7 +467,8 @@ ipc::buffer::remove_channel( ipc::thread_local_data *data,
         //FIXME - need a global error here
         exit( EXIT_FAILURE );
     }
-    return( channel_offset );
+
+    return( channel_offset >= ipc::valid_offset );
 }
    
 
@@ -506,7 +526,12 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
             exit( EXIT_FAILURE );
         }
 
-//FIXME - ref_count was a debug, till we ran into an atomic alignment error on A72 NXP platforms
+        /**
+         * ref_count was a debug, till we ran into an atomic alignment error 
+         * on A72 NXP platforms, likely an alignment issue, will see if we 
+         * can fix by adjusting alignment. Could have been caused by spurious
+         * pack(1) ifdef in the control structure. - jcb
+         */
         if( ch_ptr->meta.ref_count == 0 )
         {
 #if DEBUG        
@@ -722,7 +747,9 @@ ipc::buffer::allocate_record( ipc::thread_local_data *data,
     auto channel_found = data->channel_local_allocation.find( channel_id );
     if( channel_found == data->channel_local_allocation.end() )
     {
+#if DEBUG        
         std::cerr << "channel not found\n";
+#endif        
         return( nullptr );
     }
 
@@ -963,7 +990,7 @@ ipc::buffer::receive_record( ipc::thread_local_data *tls_data,
             ret_code = 
                 ipc::buffer::spsc_lock_free::pop( channel_info, 
                                                   record, 
-                                                  &tls_data->buffer->data ); 
+                                                  &tls_data->buffer->data );
         }
         break;
         default:
@@ -1016,7 +1043,6 @@ ipc::buffer::close_tls_structure( ipc::thread_local_data* data )
     std::cout << "overall blocks available before: " << 
         ipc::meta_info::heap_t::get_current_free( &data->buffer->heap  ) << "\n";
     std::cout << "channels before and after tls destruct\n";
-    std::cout << (*data) << "\n";
 #endif    
     ipc::buffer::unlink_channels( data );
 #if DEBUG    

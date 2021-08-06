@@ -53,19 +53,6 @@ public:
 
     ~buffer_base()  = default;
 
-    
-    /**
-     * NOTE: you should add anythying with in-buffer
-     * storage requirements to the "meta_info" class
-     * so that the padding is calculated correctly.
-     */
-
-    /**
-     * padding, scribble with all ones at init
-     */
-    ipc::byte_t      alignment_padding[ pad_size ] = 
-        { std::numeric_limits< ipc::byte_t >::max() };
-
 }; //end struct buffer_base
 
 } //end namespace ipc
