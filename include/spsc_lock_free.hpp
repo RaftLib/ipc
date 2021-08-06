@@ -38,6 +38,7 @@ private:
     /**
      * inc
      */
+    inline 
     static 
     void
     inc_tail( PARENTNODE *channel ) 
@@ -53,6 +54,7 @@ private:
     /**
      * inc
      */
+    inline 
     static 
     void
     inc_head( PARENTNODE *channel ) 
@@ -116,7 +118,7 @@ TOP:
     * can expect to write without blocking
     * @return  size_t
     */
-   static std::size_t space_avail( PARENTNODE *channel )
+   inline static std::size_t space_avail( PARENTNODE *channel )
    {
       return( ipc::ch_entries_spsc::n_entries - self_t::size( channel ) );
    }
@@ -156,7 +158,7 @@ TOP:
      * that should allow this LF queue to translate buffer offsets into the 
      * calling VA space. 
      */
-    static ipc::tx_code push( PARENTNODE *channel, 
+    inline static ipc::tx_code push( PARENTNODE *channel, 
                               LOCKFREE_NODE *node_to_add, 
                               void *buffer_base )
     {
@@ -195,7 +197,7 @@ PUSH_RETRY:
     /**
      * pop - pop a node from the ring buffer
      */
-    static ipc::tx_code pop( PARENTNODE *channel, 
+    inline static ipc::tx_code pop( PARENTNODE *channel, 
                              LOCKFREE_NODE **receive_node, 
                              void *buffer_base )
     {

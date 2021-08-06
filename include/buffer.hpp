@@ -304,11 +304,12 @@ public:
     /**
      * remove_channel - remove channel with given ID assicoated with this tls
      * structure.
-     * @return  ptr_t - the offset of the removed node, or 0 for failure
+     * @return bool - if channel found, if found it's refcount is decremented
+     * if refcount is zero, channel is removed and deallocated to buffer.
      */
     static
-    ipc::ptr_offset_t              remove_channel( ipc::thread_local_data *tls,
-                                                   const channel_id_t channel_id );
+    bool                  remove_channel( ipc::thread_local_data *tls,
+                                          const channel_id_t channel_id );
     
 
     /**

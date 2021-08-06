@@ -279,6 +279,7 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         {
             case( ipc::mpmc ):
             {
+                //set up dummy node for LF queue 
                 auto dummy_info_multiple  = 
                     ipc::buffer::heap_t::get_block_multiple( sizeof( ipc::record_index_t ) );
                 
@@ -308,7 +309,6 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
 
         }
 
-        //set up dummy node for LF queue 
         
         channel->meta.type = type;
         if( ! ipc::buffer::channel_list_t::insert( &(data->buffer->data), 
@@ -329,9 +329,16 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
      * else, find_channel_buffer_offset function has set channel ptr to something valid
      * and the output contains the pointer to channel_info. 
      */
+    channel->meta.ref_count++ /** atomic inc **/;
+    std::cerr << (*channel) << "\n";
 
 POST:
     // Release semaphore
+    /**
+     * keep in mind, we jump here if we can't allocate memory too, 
+     * so check ret channel pointer for null below before adding it
+     * to the TLS. 
+     */
     if( sem_post( sem ) != 0 )
     {
         std::perror( "Failed to post semaphore, exiting given we can't recover from this!" );
@@ -339,17 +346,13 @@ POST:
         exit( EXIT_FAILURE );
     }
     
-
-    channel->meta.ref_count++ /** atomic inc **/;
-    assert( channel != nullptr );
-    assert( channel_start >= 0 );
-#if DEBUG
-    std::cerr << (*channel) << "\n";
-#endif 
-    /** insert zero count allocation struct into local calling TLS **/
-    data->channel_local_allocation.insert( std::make_pair( channel_id, ipc::local_allocation_info() ) ); 
-    /** insert channel structure into calling TLS **/
-    data->channel_map.insert( std::make_pair( channel_id, channel ) );
+    if( channel != nullptr /** only case if we couldn't allocate mem **/ )
+    {
+        /** insert zero count allocation struct into local calling TLS **/
+        data->channel_local_allocation.insert( std::make_pair( channel_id, ipc::local_allocation_info() ) ); 
+        /** insert channel structure into calling TLS **/
+        data->channel_map.insert( std::make_pair( channel_id, channel ) );
+    }
     return( channel_start );
 }
 
@@ -395,19 +398,11 @@ ipc::buffer::find_channel( ipc::thread_local_data *data,
     }
     return( output );
 }
-ipc::ptr_offset_t
+
+bool
 ipc::buffer::remove_channel( ipc::thread_local_data *data, 
                              const channel_id_t channel_id )
 {
-
-    /** 
-     * once we add multiple channels per thread we'll 
-     * need to add a std::map or something to the 
-     * thread_data structure so that we can lookup
-     * the specific offset of the called chanel, but
-     * for right now we have a direct lookup of the 
-     * channel we want to acquire.
-     */
     /** acquire sem **/
     auto *sem = data->index_semaphore;
     if( sem_wait( sem ) != 0 )
@@ -447,7 +442,8 @@ ipc::buffer::remove_channel( ipc::thread_local_data *data,
         //FIXME - need a global error here
         exit( EXIT_FAILURE );
     }
-    return( channel_offset );
+
+    return( channel_offset >= ipc::valid_offset );
 }
    
 
@@ -505,7 +501,12 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
             exit( EXIT_FAILURE );
         }
 
-//FIXME - ref_count was a debug, till we ran into an atomic alignment error on A72 NXP platforms
+        /**
+         * ref_count was a debug, till we ran into an atomic alignment error 
+         * on A72 NXP platforms, likely an alignment issue, will see if we 
+         * can fix by adjusting alignment. Could have been caused by spurious
+         * pack(1) ifdef in the control structure. - jcb
+         */
         if( ch_ptr->meta.ref_count == 0 )
         {
 #if DEBUG        
@@ -962,7 +963,7 @@ ipc::buffer::receive_record( ipc::thread_local_data *tls_data,
             ret_code = 
                 ipc::buffer::spsc_lock_free::pop( channel_info, 
                                                   record, 
-                                                  &tls_data->buffer->data ); 
+                                                  &tls_data->buffer->data );
         }
         break;
         default:

@@ -21,6 +21,7 @@ set( TESTAPPS #list apps
         allocationMultiChannelOpen
         allocationMultiChannelNoChannel
         channelinfo_spacing
+        spsc_two_threads
         #allocationMultithreaded
         #allocationMultiprocess
         #nodeCounter
