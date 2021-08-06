@@ -21,6 +21,7 @@
 #define _BUFFER_HPP_  1
 
 #include <cstdint>
+#include <string>
 #include "genericnode.hpp"
 #include "indexbase.hpp"
 #include "database.hpp"
@@ -46,6 +47,8 @@ private:
      * of this if the user requests large blocks.
      */
     static constexpr std::size_t global_block_inc = (1 << 20);
+
+    static std::string get_tmp_dir();
 
     static void* thread_local_allocate( ipc::thread_local_data *data, 
                                         const std::size_t blocks,

@@ -70,12 +70,13 @@ ipc::buffer::initialize( const std::string shm_handle )
     catch( shm_already_exists &ex )
     {
         auto *output( shm::eopen< ipc::buffer >( shm_handle ) );
-        while( output->cookie != ipc::buffer::cookie_in_use )
+        while( output->cookie.load( std::memory_order_relaxed )
+            != ipc::buffer::cookie_in_use )
         {
             //spin while parent is setting things up.
-            //should work for many architectures but...need to double check
             __asm__ volatile( "nop" : : : );
         }
+        output->buffer_refcount++;
         return( output );
     }
     catch( bad_shm_alloc &ex )
@@ -85,7 +86,7 @@ ipc::buffer::initialize( const std::string shm_handle )
         std::cout << ex.what() << "\n";
         exit( EXIT_FAILURE );
     }
-
+    
     //we're here, then we're the first ones, lots to do.
     /**
      * STEP 1, set up semaphore name and semaphore for alloc
@@ -156,11 +157,34 @@ ipc::buffer::initialize( const std::string shm_handle )
     out_buffer->databuffer_size     = buffer_size_nbytes;
     
 
-    out_buffer->cookie              = ipc::buffer_base::cookie_in_use;
-    
     sem_close( sem_alloc.second );
     sem_close( sem_index.second );
+    out_buffer->buffer_refcount++;    
+    out_buffer->cookie.store( ipc::buffer_base::cookie_in_use, 
+                                std::memory_order_relaxed );
+   
+
+    
+    //FIXME - implement crash log to kill off the sem and shm handle
     return( out_buffer );
+}
+
+std::string 
+ipc::buffer::get_tmp_dir()
+{
+#if defined __linux 
+    char *dir = getenv( "TMPDIR" );
+    if( dir != nullptr )
+    {
+        return( std::string( dir ) );
+    }
+    else
+    {
+        return( "/tmp" );
+    }
+#else
+#warning "not yet implemented"
+#endif
 }
 
 void
@@ -175,13 +199,14 @@ ipc::buffer::destruct( ipc::buffer *b,
         sem_unlink( b->index_sem_name );
         sem_unlink( b->alloc_sem_name );
     }
-    //FIXME, might need to make sure nobody is still using
-    //the FIFOs internally, spin till done
-    shm::close( shm_handle,
-                (void**)&b,
-                b->allocated_size,
-                false,
-                unlink );
+    if( --b->buffer_refcount == 0 )
+    {
+        shm::close( shm_handle,
+                    (void**)&b,
+                    b->allocated_size,
+                    false,
+                    unlink );
+    }
     return;
 }
 
@@ -245,7 +270,8 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         }
         
         const auto meta_offset = 
-            ipc::buffer::calculate_block_offset( &data->buffer->data, mem_for_new_channel );
+            ipc::buffer::calculate_block_offset( &data->buffer->data, 
+                                                 mem_for_new_channel );
 
 
         /** need to calculate channel start, don't change pointer yet, we need that **/
@@ -330,7 +356,6 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
      * and the output contains the pointer to channel_info. 
      */
     channel->meta.ref_count++ /** atomic inc **/;
-    std::cerr << (*channel) << "\n";
 
 POST:
     // Release semaphore
@@ -722,7 +747,9 @@ ipc::buffer::allocate_record( ipc::thread_local_data *data,
     auto channel_found = data->channel_local_allocation.find( channel_id );
     if( channel_found == data->channel_local_allocation.end() )
     {
+#if DEBUG        
         std::cerr << "channel not found\n";
+#endif        
         return( nullptr );
     }
 
@@ -1016,7 +1043,6 @@ ipc::buffer::close_tls_structure( ipc::thread_local_data* data )
     std::cout << "overall blocks available before: " << 
         ipc::meta_info::heap_t::get_current_free( &data->buffer->heap  ) << "\n";
     std::cout << "channels before and after tls destruct\n";
-    std::cout << (*data) << "\n";
 #endif    
     ipc::buffer::unlink_channels( data );
 #if DEBUG    

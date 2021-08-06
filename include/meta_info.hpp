@@ -75,6 +75,7 @@ public:
      */
     std::size_t             databuffer_size         = 0;
     
+    std::atomic< std::uint32_t >   buffer_refcount  = {0};
     /**
      * ordering here matters, this will be
      * an in-place allocation for the caller
@@ -82,7 +83,7 @@ public:
      * within the target data region. Only 
      * one threaed can set the cookie. 
      */
-    std::uint16_t    cookie                         = 0;
+    std::atomic< std::uint16_t >    cookie          = {0};
 };
 
 } //end namespace ipc
