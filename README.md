@@ -12,6 +12,10 @@ Currently implemented is the following:
 - multiple channels per buffer (you can have as many independent channels as
 you want till you run out of memory. 
 
+## Why
+* Lack of existing simple point-to-point multi-process
+allocation and communication mechanisms. 
+
 ## Simple example
 ```cpp
 /** only include file you should need **/
