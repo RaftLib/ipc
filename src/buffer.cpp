@@ -70,7 +70,7 @@ ipc::buffer::initialize( const std::string shm_handle )
     catch( shm_already_exists &ex )
     {
         auto *output( shm::eopen< ipc::buffer >( shm_handle ) );
-        while( output->cookie.load( std::memory_order_relaxed )
+        while( output->cookie.load( std::memory_order_seq_cst)
             != ipc::buffer::cookie_in_use )
         {
             //spin while parent is setting things up.
@@ -161,7 +161,7 @@ ipc::buffer::initialize( const std::string shm_handle )
     sem_close( sem_index.second );
     out_buffer->buffer_refcount++;    
     out_buffer->cookie.store( ipc::buffer_base::cookie_in_use, 
-                                std::memory_order_relaxed );
+                                std::memory_order_seq_cst);
    
 
     
@@ -199,6 +199,7 @@ ipc::buffer::destruct( ipc::buffer *b,
         sem_unlink( b->index_sem_name );
         sem_unlink( b->alloc_sem_name );
     }
+    
     if( --b->buffer_refcount == 0 )
     {
         shm::close( shm_handle,

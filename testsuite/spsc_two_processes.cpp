@@ -54,7 +54,6 @@ void producer(  const int count,
     }
     ipc::buffer::unlink_channels( tls_producer );
     ipc::buffer::close_tls_structure( tls_producer );
-    std::cout << "completed push sequence\n";
     return;
 }
 
@@ -90,22 +89,26 @@ void consumer(  const int count,
         count_tracker++;
         
     }while( value != (count - 1) );
-    std::cout << "consumer is complete\n";
     //just remove all channels for this tls block, we only have one
     ipc::buffer::unlink_channels( tls_consumer );
     ipc::buffer::close_tls_structure( tls_consumer );
     return;
 }
 
-int main()
+int main( int argc, char **argv )
 {
+
 
     const auto channel_id   = 1;
 
     //max count is 30 - 12 or (1<<18)
     //this should be bigger than the buffer size, we wanna make 
     //sure the allocator and everything else works. 
-    const auto count        = (1<<25);
+    int count = (1 << 25 );
+    if( argc > 1 )
+    {
+        count = (1 << atoi( argv[ 1 ] ) );
+    }
     bool is_producer( false );
     auto child = fork();
     switch( child )
@@ -131,7 +134,6 @@ int main()
     auto *buffer = ipc::buffer::initialize( "thehandle"  );
     if( is_producer )
     {
-        std::cout << "here\n";
         producer(  count, 
                    channel_id, 
                    buffer );
@@ -139,7 +141,6 @@ int main()
     }
     else
     {
-        std::cout << "not here\n";
         consumer(  count, 
                    channel_id, 
                    buffer );
