@@ -14,6 +14,9 @@ you want till you run out of memory.
 
 ## Simple example
 ```cpp
+/** only include file you should need **/
+#include "buffer.hpp"
+
 /**
  * shared memory buffer allocated and returned as a pointer,
  * this function can be called from each process safely to get
