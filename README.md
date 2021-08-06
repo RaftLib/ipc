@@ -29,7 +29,7 @@ auto *buffer = ipc::buffer::initialize( "thehandle"  );
 auto *tls_producer      = ipc::buffer::get_tls_structure( buffer,
                                                           thread_id );
 /** get some memory and do something with it **/
-int *int = (int*)
+int *output = (int*)
 ipc::buffer::allocate_record( tls_producer, 
                               sizeof( int ), 
                               channel_id );
