@@ -15,7 +15,6 @@ you want till you run out of memory.
 ## Why
 * Lack of existing simple point-to-point multi-process
 allocation and communication mechanisms. 
-* On vacation, so, why not do smeothing fun? 
 
 ## Simple example
 ```cpp
