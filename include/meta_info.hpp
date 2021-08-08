@@ -75,7 +75,6 @@ public:
      */
     std::size_t             databuffer_size         = 0;
     
-    std::atomic< std::uint32_t >   buffer_refcount  = {0};
     /**
      * ordering here matters, this will be
      * an in-place allocation for the caller

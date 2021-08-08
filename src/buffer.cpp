@@ -76,7 +76,6 @@ ipc::buffer::initialize( const std::string shm_handle )
             //spin while parent is setting things up.
             __asm__ volatile( "nop" : : : );
         }
-        output->buffer_refcount++;
         return( output );
     }
     catch( bad_shm_alloc &ex )
@@ -159,7 +158,6 @@ ipc::buffer::initialize( const std::string shm_handle )
 
     sem_close( sem_alloc.second );
     sem_close( sem_index.second );
-    out_buffer->buffer_refcount++;    
     out_buffer->cookie.store( ipc::buffer_base::cookie_in_use, 
                                 std::memory_order_seq_cst);
    
@@ -200,14 +198,11 @@ ipc::buffer::destruct( ipc::buffer *b,
         sem_unlink( b->alloc_sem_name );
     }
     
-    if( --b->buffer_refcount == 0 )
-    {
-        shm::close( shm_handle,
-                    (void**)&b,
-                    b->allocated_size,
-                    false,
-                    unlink );
-    }
+    shm::close( shm_handle,
+                (void**)&b,
+                b->allocated_size,
+                false,
+                unlink );
     return;
 }
 

@@ -22,6 +22,8 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "buffer.hpp"
 
@@ -165,7 +167,12 @@ int main()
                    channel_id_a,
                    channel_id_b,
                    buffer );
-
+        //we'll make the producer the main
+        int status = 0;
+        waitpid( -1, &status, 0 );
+        //buffer shouldn't destruct completely till everybody 
+        //is done using it. 
+        ipc::buffer::destruct( buffer, "thehandle", true );
     }
     else
     {
@@ -175,9 +182,7 @@ int main()
         std::thread dest2( consumer, count, channel_id_b, buffer );
         dest1.join();
         dest2.join();
+        ipc::buffer::destruct( buffer, "thehandle", false );
     }
-    //buffer shouldn't destruct completely till everybody 
-    //is done using it. 
-    ipc::buffer::destruct( buffer, "thehandle", true );
     return( EXIT_SUCCESS );
 }

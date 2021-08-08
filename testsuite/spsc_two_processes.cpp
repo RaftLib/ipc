@@ -22,6 +22,8 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "buffer.hpp"
 
@@ -104,7 +106,7 @@ int main( int argc, char **argv )
     //max count is 30 - 12 or (1<<18)
     //this should be bigger than the buffer size, we wanna make 
     //sure the allocator and everything else works. 
-    int count = (1 << 25 );
+    int count = (1 << 20 );
     if( argc > 1 )
     {
         count = (1 << atoi( argv[ 1 ] ) );
@@ -138,16 +140,20 @@ int main( int argc, char **argv )
                    channel_id, 
                    buffer );
 
+        //we'll make the producer the main
+        int status = 0;
+        waitpid( -1, &status, 0 );
+        ipc::buffer::destruct( buffer, "thehandle", true );
     }
     else
     {
         consumer(  count, 
                    channel_id, 
                    buffer );
+        ipc::buffer::destruct( buffer, "thehandle", false );
 
     }
     //buffer shouldn't destruct completely till everybody 
     //is done using it. 
-    ipc::buffer::destruct( buffer, "thehandle", true );
     return( EXIT_SUCCESS );
 }

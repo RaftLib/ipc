@@ -120,7 +120,7 @@ int main()
     //max count is 30 - 12 or (1<<18)
     //this should be bigger than the buffer size, we wanna make 
     //sure the allocator and everything else works. 
-    const auto count = (1<<25);
+    const auto count = (1<<20);
     std::thread source( producer, count, channel_id, buffer, std::ref( gate ) );
     std::thread dest  ( consumer, count, channel_id, buffer, std::ref( gate ) );
 
