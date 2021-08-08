@@ -33,10 +33,11 @@ struct alignas( L1D_CACHE_LINE_SIZE ) ch_meta_all
 
     /** this thread id **/
     ipc::channel_id_t  channel_id                        = 0;
-   
+    /** reference inc for each TLS struct accessing this channel **/ 
     ipc::refcnt_t      ref_count                         = 0; 
-    
+    /** spsc/mpmc **/
     ipc::channel_type  type                              = ipc::spsc; 
+    /** in case we want to do mpmc with a semaphore **/
     sem_buffer_t                    channel_semaphore    = { '\0' };
     /**
      * FIXME - consider making these a union or template dep.
@@ -44,7 +45,8 @@ struct alignas( L1D_CACHE_LINE_SIZE ) ch_meta_all
      * "block" anyways so who cares, but, definitely a place
      * that'd be nice to optimize.
      */
-    alignas( L1D_CACHE_LINE_SIZE ) ptr_offset_t       dummy_node_offset   = ipc::invalid_ptr_offset;
+    alignas( L1D_CACHE_LINE_SIZE ) ptr_offset_t       dummy_node_offset   = 
+                                                            ipc::invalid_ptr_offset;
     alignas( L1D_CACHE_LINE_SIZE ) ipc::credit_t      prod_credits        = 0;
     alignas( L1D_CACHE_LINE_SIZE ) ipc::credit_t      cons_credits        = 0;
 };
