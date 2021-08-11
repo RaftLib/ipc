@@ -181,7 +181,8 @@ ipc::buffer::get_tmp_dir()
         return( "/tmp" );
     }
 #else
-#warning "not yet implemented"
+#pragma message ("not yet implemented for non-linux platforms")
+    return( "./" );
 #endif
 }
 

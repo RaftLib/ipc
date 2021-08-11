@@ -33,7 +33,7 @@
 namespace ipc
 {
 
-struct nodebase
+struct alignas( 1<<ipc::block_size_power_two ) nodebase
 {
    
     /**
@@ -138,7 +138,7 @@ public:
 
 
 template < class T >
-           struct alignas( L1D_CACHE_LINE_SIZE ) node : nodebase
+           struct alignas( 1 << ipc::block_size_power_two ) node : nodebase
 {
     
     constexpr node() : nodebase(){};
