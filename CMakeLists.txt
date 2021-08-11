@@ -27,23 +27,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -mtune=native")
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 
-
-set( HELPER_DIR "${CMAKE_SOURCE_DIR}/helpers" )
+## 
+# helpers
 ##
-# helper exec to get the L1 cache size from Linux/OS X/Win
-##
-execute_process( COMMAND ${CMAKE_CXX_COMPILER} ${HELPER_DIR}/cacheinfo.cpp -o ${HELPER_DIR}/cacheinfo)
-execute_process( COMMAND ${HELPER_DIR}/cacheinfo 
-                 COMMAND tr -d '\n' 
-                 OUTPUT_VARIABLE L1D_LINE_SIZE )
-execute_process( COMMAND rm -f ${HELPER_DIR}/cacheinfo )                 
+add_subdirectory(helpers)
 
-if( NOT L1D_LINE_SIZE )
-    set( L1D_LINE_SIZE 64 )
-    message( INFO " Couldn't detect cache line size, set to: ${L1D_LINE_SIZE}" )
-else()
-    message( INFO " Detected cache line size, set to: ${L1D_LINE_SIZE}" )
-endif()
 
 ##
 # for cache line size

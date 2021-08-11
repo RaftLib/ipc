@@ -1,7 +1,6 @@
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 find_package( LIBRT )
-find_package( NUMA )
 add_library( buffer 
                 buffer.cpp 
                 translate.cpp
