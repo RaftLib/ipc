@@ -127,19 +127,6 @@ public:
     buffer();
     ~buffer() = default;
 
-    /**
-     * getObjectAt - convenience method for translate above, will
-     * save the implememnter quite a bit of extra typing (hopefully).
-     * @param   b - buffer&
-     * @param   address - the offset from the base address you
-     * want to translate. 
-     * @return T*
-     */
-    template < class T > static T* getObjectAt( ipc::buffer *b,
-                                                const ipc::ptr_t address )
-    {
-        return( reinterpret_cast< T* >( translate( b, address ) ) );
-    }
 
     /**
      * allocate - allocate nbytes of data from the buffer, if not enough 
@@ -270,13 +257,19 @@ public:
     //                                const channel_id_t channel_id );
     
     /**
-     * add_channel - this function could be called per thread to 
-     * add a channel to the local thread context. If the channel
+     * add_spsc_lf_record - this function could be called per thread to 
+     * add a recordchannel to the lacal thread context. Record channels
+     * are designed for use cases where mixed-object types are needed of 
+     * varying size requirements on a single channel. As an example, if 
+     * you have files that you need to fill that are 4KiB, 16KiB, 1MiB, and
+     * all over the same channel, and you want zero copy, then this is for you. 
+     * If the channel you want to initialize 
      * already exists in the global context then this channel
      * is added to the local thread context with a zero allocation
      * (zero given this thread has yet to call allocate on this 
      * channel). Call allocate once you have channels added to 
-     * get some memory. 
+     * get some memory. This channels should be used with the corresponding
+     * "_record" function calls. 
      * @param   tls - allocated and valid thread_local_data structure
      * @param   channel_id - id of channel you want to add to this
      * thread context. If it doesn't exist, it will be created for you
@@ -290,9 +283,22 @@ public:
      * error. 
      */
     static
-    channel_id_t add_spsc_lf_channel( ipc::thread_local_data *tls, 
-                                      const channel_id_t channel_id );
+    channel_id_t add_spsc_lf_record_channel( ipc::thread_local_data *tls, 
+                                             const channel_id_t channel_id );
     
+
+    /**
+     * add_spsc_lf_data_channel - unlike the record channel, this channel
+     * for a specific single type/size for both the producer consumer 
+     * side. 
+     */
+    template < class T >
+    static
+    channel_id_t    add_spsc_lf_data_channel( ipc::thread_local_data *tls,
+                                              const channel_id_t channel_id )
+    {
+        //do some stuff
+    };
 
     /**
      * find_channel - returns the information about the target 
