@@ -27,6 +27,7 @@
 #include <type_traits>
 #include <typeinfo>
 
+#include "sem.hpp"
 #include "buffer.hpp"
 
 #ifdef DEBUG
@@ -96,19 +97,19 @@ ipc::buffer::initialize( const std::string shm_handle )
     auto sem_allocate_f = [&]( const std::string &&name )->auto
     {
         std::string sem_name;
-        shm::genkey( sem_name, ipc::semaphore_length - 1 );
-        auto *sem( 
-            sem_open( sem_name.c_str(), 
-                    (O_CREAT | O_RDWR ), 
-                    S_IRWXU, 
-                    0 ) );
-        if( sem == SEM_FAILED )
+
+        auto sem_name = ipc::sem::generate_key( ipc::semaphore_length - 1 );
+        auto sem_id   = ipc::sem::open( sem_name,
+                                        ipc::sem::sem_create,
+                                        ipc::sem::file_rdwr );
+        if( sem_id == ipc::sem::sem_error )
         {
-            //FIXME - add exceptions here
             std::perror( "Failed to open semaphore, exiting!!" );
             std::exit( EXIT_FAILURE );
         }
-        if( sem_init( sem, 1 /** multiprocess **/, 1 ) != 0 )
+
+
+        if( ipc::sem::main_init( sem_id ) == -1 )
         {
             std::stringstream ss;
             ss << "failed to init index semaphore, (" << name << "), exiting\n";
@@ -143,26 +144,25 @@ ipc::buffer::initialize( const std::string shm_handle )
      * after the constructor was called.
      */
     //strcopy index
-    std::strncpy(   out_buffer->index_sem_name,
-                    sem_index.first.c_str(),
-                    ipc::semaphore_length - 1 );
-
+    ipc::sem::key_copy( out_buffer->alloc_sem_name,
+                        ipc::semaphore_length - 1,
+                        sem_index.first );
     //strcopy alloc sem name
-    std::strncpy(   out_buffer->alloc_sem_name,
-                    sem_alloc.first.c_str(),
-                    ipc::semaphore_length - 1 );
+    ipc::sem::key_copy( out_buffer->alloc_sem_name,
+                        ipc::semaphore_length - 1,
+                        sem_alloc.first );
+
 
     out_buffer->allocated_size      = size_we_need;
     out_buffer->databuffer_size     = buffer_size_nbytes;
     
+    ipc::sem::sem_close( sem_alloc.second );
+    ipc::sem::sem_close( sem_index.second );
+    
 
-    sem_close( sem_alloc.second );
-    sem_close( sem_index.second );
     out_buffer->cookie.store( ipc::buffer_base::cookie_in_use, 
                                 std::memory_order_seq_cst);
    
-
-    
     //FIXME - implement crash log to kill off the sem and shm handle
     return( out_buffer );
 }
@@ -191,12 +191,10 @@ ipc::buffer::destruct( ipc::buffer *b,
                                 const std::string &shm_handle,
                                 bool unlink )
 {
-    //clear semaphores, each TLS destruct
-    //must already call sem_close
     if( unlink )
     {
-        sem_unlink( b->index_sem_name );
-        sem_unlink( b->alloc_sem_name );
+        ipc::sem::main_close( (ipc::sem::sem_obj_t) b->index_sem_name );
+        ipc::sem::main_close( (ipc::sem::sem_obj_t) b->alloc_sem_name );
     }
     
     shm::close( shm_handle,
@@ -1048,9 +1046,9 @@ ipc::buffer::close_tls_structure( ipc::thread_local_data* data )
     std::cout << (*data) << "\n";
 #endif    
     // Close semaphores
-    sem_close( data->allocate_semaphore );
-    sem_close( data->index_semaphore    );
-
+    ipc::sem::sem_close( data->allocate_semaphore );
+    ipc::sem::sem_close( data->index_semaphore    );
+    
     ::free( data );
     return;
 }
