@@ -143,7 +143,7 @@ int main( int argc, char **argv )
         //we'll make the producer the main
         int status = 0;
         waitpid( -1, &status, 0 );
-        ipc::buffer::destruct( buffer, "thehandle", true );
+        ipc::buffer::destruct( buffer, "thehandle" );
     }
     else
     {

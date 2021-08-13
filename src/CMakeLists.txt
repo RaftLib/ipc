@@ -2,6 +2,7 @@ set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 find_package( LIBRT )
 add_library( buffer 
+                sem.cpp
                 buffer.cpp 
                 translate.cpp
                 genericnode.cpp

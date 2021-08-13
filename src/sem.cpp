@@ -21,6 +21,7 @@
 #include <random>
 #include <sys/errno.h>
 #include <cstring>
+#include <cassert>
 
 #include "sem.hpp"
 
@@ -42,7 +43,8 @@ ipc::sem::generate_key( const int max_length )
     const int val = distrib( gen );
 #if __linux
     //string key
-    return( std::to_string( val ).substr( 0, max_length ) );
+    //FIXME - need to handle memory here better
+    return( strdup( std::to_string( val ).substr( 0, max_length ).c_str() ) );
 #elif __APPLE__
     //integer key
     char *path = getcwd( nullptr, 0 );
@@ -57,6 +59,16 @@ ipc::sem::generate_key( const int max_length )
 #endif
 }
 
+void 
+ipc::sem::free_key( sem_key_t k )
+{
+#if __linux
+    free( k );
+#else
+    UNUSED( k );
+#endif
+}
+
 bool      
 ipc::sem::key_copy( void *dst, 
                     const std::size_t dst_length, 
@@ -66,7 +78,7 @@ ipc::sem::key_copy( void *dst,
     //string key
     std::memset( dst, '\0', dst_length );
     std::strncpy(   (char*) dst,
-                    key.c_str(),
+                    key,
                     dst_length );
     return( true );                    
 #elif __APPLE__
@@ -88,7 +100,8 @@ ipc::sem::open(     const sem_key_t key,
                     const std::int32_t fdperms )
 {
 #if __linux
-    return( sem_open( key.c_str(), 
+    return( sem_open( 
+            key, 
             flags, 
             fdperms, 
             0 ) );
@@ -109,7 +122,6 @@ ipc::sem::main_init( ipc::sem::sem_obj_t id )
     arg.val = 0;
     if( semctl( id, 0, SETVAL, arg ) == -1 )
     {
-        std::cout << "here\n";
         //errno is set, ret -1 and errno can be checked
         return( -1 );
     }
@@ -136,6 +148,7 @@ ipc::sem::sub_init( const ipc::sem::sem_obj_t id )
 {
 #if __linux
     //nothing to do here
+    UNUSED( id );
     return( 0 );
 #elif __APPLE__
     struct  semid_ds    ds;
@@ -161,10 +174,11 @@ ipc::sem::sub_init( const ipc::sem::sem_obj_t id )
 }
 
 int
-ipc::sem::sem_close( ipoc::sem::sem_obj_t obj )
+ipc::sem::sem_close( ipc::sem::sem_obj_t obj )
 {
 #ifdef __linux
-    sem_close( obj );
+    assert( obj != nullptr );
+    return( sem_close( obj ) );
 #elif __APPLE__
     //nothing to do, they're tracked system wide
     //until we destroy
@@ -176,26 +190,17 @@ ipc::sem::sem_close( ipoc::sem::sem_obj_t obj )
 }
 
 int 
-ipc::sem::main_close( ipc::sem::sem_obj_t obj )
+ipc::sem::main_close( ipc::sem::sem_key_t key )
 {
 #ifdef __linux
-    if( sem_destroy( obj ) != 0 )
-    {
-        //failure
-        return( -1 );
-    }
-    if( sem_close( obj ) != 0 )
-    {
-        return( -1 );
-    }
-    return( sem_unlink( obj ) );
+    return( sem_unlink( key ) );
 #elif __APPLE__
     union semun arg; 
-    semctl( obj, 0, IPC_RMID, arg );
+    return( semctl( key, 0, IPC_RMID, arg ) );
 #else
-
+    //unimpleemnted
+    return( -1 );
 #endif
-    return( 0 );
 }
 
 int 

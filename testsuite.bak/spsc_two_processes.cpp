@@ -36,55 +36,26 @@ using lf_queue_t =
 using gate_t = std::atomic< int >;
 
 void producer(  const int count, 
-                const ipc::channel_id_t channel_id_a, 
-                const ipc::channel_id_t channel_id_b, 
+                const ipc::channel_id_t channel_id, 
                 ipc::buffer *buffer ) 
 {
     const auto thread_id    = getpid();
     auto *tls_producer      = ipc::buffer::get_tls_structure( buffer, thread_id );
-    /** create two channels, single process, single thread **/
-    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, 
-                                          channel_id_a ) == ipc::channel_err )
+    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, channel_id ) == ipc::channel_err )
     {
         return;
     }
     
-    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, 
-                                          channel_id_b ) == ipc::channel_err )
-    {
-        return;
-    }
-    
+
     for( int i( 0 ); i < count ; i++ )
     {
-        //send channel 1
-        {
-            int *output = 
-                (int*) ipc::buffer::allocate_record( tls_producer, 
-                                                     sizeof( int ), 
-                                                     channel_id_a );
-            *output = i;    
-            while( ipc::buffer::send_record(    tls_producer, 
-                                                channel_id_a, 
-                                                (void**)&output ) != ipc::tx_success );
-        }
-        //send channel 2
-        {
-            int *output = 
-                (int*) ipc::buffer::allocate_record( tls_producer, 
-                                                     sizeof( int ), 
-                                                     channel_id_b );
-            *output = i;    
-            while( ipc::buffer::send_record(    tls_producer, 
-                                                channel_id_b, 
-                                                (void**)&output ) != ipc::tx_success );
-        }
+        int *output = 
+            (int*) ipc::buffer::allocate_record( tls_producer, sizeof( int ), channel_id );
+        *output = i;    
+        while( ipc::buffer::send_record( tls_producer, channel_id, (void**)&output ) != ipc::tx_success );
     }
-
-
     ipc::buffer::unlink_channels( tls_producer );
     ipc::buffer::close_tls_structure( tls_producer );
-    std::cout << "completed push sequence\n";
     return;
 }
 
@@ -106,9 +77,7 @@ void consumer(  const int count,
     do
     {
         
-        while( ipc::buffer::receive_record(     tls_consumer, 
-                                                channel_id, 
-                                                &record ) != ipc::tx_success );
+        while( ipc::buffer::receive_record( tls_consumer, channel_id, &record ) != ipc::tx_success );
         value = *(int*)record;
 
         ipc::buffer::free_record( tls_consumer, record );
@@ -122,22 +91,26 @@ void consumer(  const int count,
         count_tracker++;
         
     }while( value != (count - 1) );
-    ipc::buffer::remove_channel( tls_consumer, channel_id );
+    //just remove all channels for this tls block, we only have one
+    ipc::buffer::unlink_channels( tls_consumer );
     ipc::buffer::close_tls_structure( tls_consumer );
-    std::cout << "done with consumer channel (" << channel_id << ")\n";
     return;
 }
 
-int main()
+int main( int argc, char **argv )
 {
 
-    const auto channel_id_a   = 1;
-    const auto channel_id_b   = 2;
+
+    const auto channel_id   = 1;
 
     //max count is 30 - 12 or (1<<18)
     //this should be bigger than the buffer size, we wanna make 
     //sure the allocator and everything else works. 
-    const auto count        = (1<<20);
+    int count = (1 << 20 );
+    if( argc > 1 )
+    {
+        count = (1 << atoi( argv[ 1 ] ) );
+    }
     bool is_producer( false );
     auto child = fork();
     switch( child )
@@ -164,26 +137,23 @@ int main()
     if( is_producer )
     {
         producer(  count, 
-                   channel_id_a,
-                   channel_id_b,
+                   channel_id, 
                    buffer );
+
         //we'll make the producer the main
         int status = 0;
         waitpid( -1, &status, 0 );
-        //buffer shouldn't destruct completely till everybody 
-        //is done using it. 
-        ipc::buffer::destruct( buffer, "thehandle" );
+        ipc::buffer::destruct( buffer, "thehandle", true );
     }
     else
     {
-        //thread one
-        std::thread dest1( consumer, count, channel_id_a, buffer );
-        //thread two
-        std::thread dest2( consumer, count, channel_id_b, buffer );
-        dest1.join();
-        dest2.join();
-        //unmap buffer from callee VA space
+        consumer(  count, 
+                   channel_id, 
+                   buffer );
         ipc::buffer::destruct( buffer, "thehandle", false );
+
     }
+    //buffer shouldn't destruct completely till everybody 
+    //is done using it. 
     return( EXIT_SUCCESS );
 }

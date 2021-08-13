@@ -9,6 +9,6 @@
 int main()
 {
     auto *buffer = ipc::buffer::initialize( "thehandle" );
-    ipc::buffer::destruct( buffer, "thehandle" );
+    ipc::buffer::destruct( buffer, "thehandle", true );
     return( EXIT_SUCCESS );
 }

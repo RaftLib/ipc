@@ -217,21 +217,19 @@ public:
 
     /**
      * destruct - will unmap the memory for the buffer b and optionally unlink
-     *            b's semaphores and unlink the key for the b. This should be
-     *            called once per process (per buffer) (see caveat for unlink)
+     * b's semaphores and unlink the key for the b. This should be
+     * called with unlink once per process (per buffer) (see caveat 
+     * for unlink). Otherwise the memory and associated stuff with this
+     * buffer will be unmapped from the callers  address space. 
      * @param   b - the buffer to be destroyed
      * @param   shm_handle - the string handle associated with b
-     * @param   unlink - true if you want to unlink b's semaphores and unlink the
-     *          shared memory, false otherwise. This should only be set to true
-     *          for the last process to use the buffer. All other processes should
-     *          set this to false.
      * @return  ipc::buffer* object, fully initialized and ready to go
      * @throws - see shm header file for errors.
      */
     static
     void                    destruct( ipc::buffer *b,
                                       const std::string &shm_handle,
-                                      bool unlink );
+                                      const bool unlink = true );
     /**
      * add_channel - this function could be called per thread to 
      * add a channel to the local thread context. If the channel
@@ -298,7 +296,8 @@ public:
                                               const channel_id_t channel_id )
     {
         //do some stuff
-    };
+        return( 0 );
+    }
 
     /**
      * find_channel - returns the information about the target 

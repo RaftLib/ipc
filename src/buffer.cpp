@@ -96,8 +96,6 @@ ipc::buffer::initialize( const std::string shm_handle )
      */
     auto sem_allocate_f = [&]( const std::string &&name )->auto
     {
-        std::string sem_name;
-
         auto sem_name = ipc::sem::generate_key( ipc::semaphore_length - 1 );
         auto sem_id   = ipc::sem::open( sem_name,
                                         ipc::sem::sem_create,
@@ -116,7 +114,8 @@ ipc::buffer::initialize( const std::string shm_handle )
             std::perror( ss.str().c_str() );
             std::exit( EXIT_FAILURE );
         }
-        return( std::make_pair( sem_name, sem ) );    
+        std::cout << name << ": " << std::hex << (std::uintptr_t)sem_id << "\n";
+        return( std::make_pair( sem_name, sem_id ) );    
     };
 
     auto sem_alloc = sem_allocate_f( "alloc" );
@@ -144,18 +143,22 @@ ipc::buffer::initialize( const std::string shm_handle )
      * after the constructor was called.
      */
     //strcopy index
-    ipc::sem::key_copy( out_buffer->alloc_sem_name,
+    ipc::sem::key_copy( out_buffer->index_sem_name,
                         ipc::semaphore_length - 1,
                         sem_index.first );
+
+
     //strcopy alloc sem name
     ipc::sem::key_copy( out_buffer->alloc_sem_name,
                         ipc::semaphore_length - 1,
                         sem_alloc.first );
+    
+
 
 
     out_buffer->allocated_size      = size_we_need;
     out_buffer->databuffer_size     = buffer_size_nbytes;
-    
+     
     ipc::sem::sem_close( sem_alloc.second );
     ipc::sem::sem_close( sem_index.second );
     
@@ -188,15 +191,14 @@ ipc::buffer::get_tmp_dir()
 
 void
 ipc::buffer::destruct( ipc::buffer *b,
-                                const std::string &shm_handle,
-                                bool unlink )
+                       const std::string &shm_handle,
+                       const bool unlink )
 {
     if( unlink )
     {
-        ipc::sem::main_close( (ipc::sem::sem_obj_t) b->index_sem_name );
-        ipc::sem::main_close( (ipc::sem::sem_obj_t) b->alloc_sem_name );
+        ipc::sem::main_close( (ipc::sem::sem_key_t) b->index_sem_name );
+        ipc::sem::main_close( (ipc::sem::sem_key_t) b->alloc_sem_name );
     }
-    
     shm::close( shm_handle,
                 (void**)&b,
                 b->allocated_size,
@@ -1005,21 +1007,40 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     //called in the context of the calling thread ID
     ptr = new thread_local_data();
     errno = 0;
-    ptr->index_semaphore    = sem_open( buffer->index_sem_name, 0x0 );
-
-
+    
+    ptr->index_semaphore    = ipc::sem::open( 
+        (ipc::sem::sem_key_t)(buffer->index_sem_name),
+        0x0,
+        ipc::sem::file_rdwr );
     /**
      * Open semaphore.
      */
-    if( ptr->index_semaphore == SEM_FAILED )
+    if( ptr->index_semaphore == ipc::sem::sem_error )
     {
         std::perror( "Failed to open index semaphore!!" );
         std::exit( EXIT_FAILURE );
     }
-    ptr->allocate_semaphore = sem_open( buffer->alloc_sem_name, 0x0 );
-    if( ptr->allocate_semaphore == SEM_FAILED )
+
+    ptr->allocate_semaphore = ipc::sem::open( 
+        (ipc::sem::sem_key_t)buffer->index_sem_name,
+        0x0,
+        ipc::sem::file_rdwr );
+
+    if( ptr->allocate_semaphore == ipc::sem::sem_error )
     {
         std::perror( "Failed to open allocate semaphore!!" );
+        std::exit( EXIT_FAILURE );
+    }
+
+    //call subinit function
+    if( ipc::sem::sub_init( ptr->allocate_semaphore ) == -1 )
+    {
+        std::perror( "failed to initialize semaphore" );
+        std::exit( EXIT_FAILURE );
+    }
+    if( ipc::sem::sub_init( ptr->index_semaphore ) == -1 )
+    {
+        std::perror( "failed to initialize index semaphore" );
         std::exit( EXIT_FAILURE );
     }
 

@@ -172,7 +172,7 @@ int main()
         waitpid( -1, &status, 0 );
         //buffer shouldn't destruct completely till everybody 
         //is done using it. 
-        ipc::buffer::destruct( buffer, "thehandle" );
+        ipc::buffer::destruct( buffer, "thehandle", true );
     }
     else
     {
@@ -182,7 +182,6 @@ int main()
         std::thread dest2( consumer, count, channel_id_b, buffer );
         dest1.join();
         dest2.join();
-        //unmap buffer from callee VA space
         ipc::buffer::destruct( buffer, "thehandle", false );
     }
     return( EXIT_SUCCESS );

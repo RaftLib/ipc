@@ -31,7 +31,7 @@ int main()
     
     /** only do this for debugging **/
     std::cout << 
-        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (262142)\n"; 
+        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (262140)\n"; 
     
     switch( ret_code )
     {
@@ -50,18 +50,19 @@ int main()
     std::uint8_t *ptr  = (std::uint8_t*) ipc::buffer::allocate_record( fake_tls, 128, channel_id );
     
     std::cout << 
-        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261886)\n"; 
+        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261884)\n"; 
     
     std::uint8_t *ptr2 = (std::uint8_t*) ipc::buffer::allocate_record( fake_tls, 128, channel_id );
     
+    //shouldn't change, blocks are allocated to the TLS
     std::cout << 
-        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261886)\n"; 
+        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261884)\n"; 
     
     
     if( ptr == nullptr )
     {
         std::cerr << "Failed at allocate\n";
-        ipc::buffer::destruct( buffer, "thehandle" );
+        ipc::buffer::destruct( buffer, "thehandle", true );
         exit( EXIT_FAILURE );
     }
     for( auto i( 0 ); i < 128; i++ )
@@ -73,13 +74,13 @@ int main()
     ipc::buffer::free_record( fake_tls, ptr2 );
 
     std::cout << 
-        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261888)\n"; 
+        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261886)\n"; 
     
 
     ipc::buffer::free_record( fake_tls, ptr );
 
     std::cout << 
-        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261890)\n"; 
+        ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (261888)\n"; 
     
 
     //blcoks that should be allocated are 258
@@ -91,6 +92,6 @@ int main()
     std::cout << 
         ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (262144)\n"; 
 
-    ipc::buffer::destruct( buffer, "thehandle" );
+    ipc::buffer::destruct( buffer, "thehandle", true );
     return( EXIT_SUCCESS );
 }

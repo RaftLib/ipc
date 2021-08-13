@@ -91,7 +91,7 @@ static const std::int32_t file_rdwr
 using sem_key_t
     =
 #if __linux
-        std::string
+        char*
 #elif __APPLE__ 
         key_t
 #endif
@@ -132,6 +132,9 @@ static constexpr sem_obj_t sem_init_value
  * platform.
  */
 static sem_key_t generate_key( const int max_length );
+
+
+static void free_key( sem_key_t k );
 
 /**
  * key_copy - call to copy the key you've created using
@@ -190,7 +193,7 @@ static int sub_init( const ipc::sem::sem_obj_t id );
  * @param obj - valid sem_obj_t.
  * @return - (-1) if failure, (0) otherwise
  */
-static int sem_close( ipoc::sem::sem_obj_t obj );
+static int sem_close( ipc::sem::sem_obj_t obj );
 
 /**
  * main_close - called by main thread/process to
@@ -200,7 +203,7 @@ static int sem_close( ipoc::sem::sem_obj_t obj );
  * @param obj - valid sem_obj_t
  * @return - (-1) if failure, (0) otherwise
  */
-static int main_close( ipc::sem::sem_obj_t key );
+static int main_close( ipc::sem::sem_key_t key );
 
 /**
  * wait - wait on the given semaphore
