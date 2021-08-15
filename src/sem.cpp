@@ -46,6 +46,7 @@ ipc::sem::generate_key( const int max_length )
     //FIXME - need to handle memory here better
     return( strdup( std::to_string( val ).substr( 0, max_length ).c_str() ) );
 #elif __APPLE__
+    UNUSED( max_length );
     //integer key
     char *path = getcwd( nullptr, 0 );
     if( path == nullptr )
@@ -179,10 +180,12 @@ ipc::sem::close( ipc::sem::sem_obj_t obj )
 #ifdef __linux
     return( sem_close( obj ) );
 #elif __APPLE__
+    UNUSED( obj );
     //nothing to do, they're tracked system wide
     //until we destroy
     return( 0 ); 
 #else
+    UNUSED( obj );
     //unimplemented
     return( -1 );
 #endif

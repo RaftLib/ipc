@@ -68,7 +68,7 @@ struct thread_local_data
      * when you start-up and closed when you
      * exit, otherwise, don't touch this. 
      */
-    sem_t *index_semaphore    = nullptr;
+    ipc::sem::sem_obj_t index_semaphore;
 
 
     

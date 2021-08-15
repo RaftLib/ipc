@@ -295,6 +295,8 @@ public:
     channel_id_t    add_spsc_lf_data_channel( ipc::thread_local_data *tls,
                                               const channel_id_t channel_id )
     {
+        UNUSED( tls );
+        UNUSED( channel_id );
         //do some stuff
         return( 0 );
     }

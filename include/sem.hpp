@@ -135,6 +135,10 @@ static constexpr sem_obj_t sem_init_value
  */
 static sem_key_t generate_key( const int max_length );
 
+template < class T > static sem_key_t convert_key( T k )
+{
+    return( *reinterpret_cast< ipc::sem::sem_key_t* >( &k ) );
+}
 
 static void free_key( sem_key_t k );
 

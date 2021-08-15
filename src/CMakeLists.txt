@@ -11,7 +11,13 @@ add_library( buffer
                 buffer_base.cpp )
 
 
-target_link_libraries( buffer pthread shm heapalloc ${CMAKE_RT_LIBS}  ${CMAKE_NUMA_LIBS} )
+target_link_libraries( buffer
+                                     ${CMAKE_THREAD_LIBS_INIT} 
+                                     pthread 
+                                     shm 
+                                     heapalloc 
+                                     ${CMAKE_RT_LIBS}  
+                                     ${CMAKE_NUMA_LIBS} )
 
 
 install( TARGETS buffer

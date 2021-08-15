@@ -180,7 +180,7 @@ ipc::buffer::get_tmp_dir()
         return( "/tmp" );
     }
 #else
-#pragma message ("not yet implemented for non-linux platforms")
+#pragma message ("tmp directory helper not yet implemented for non-linux platforms, returning (./)")
     return( "./" );
 #endif
 }
@@ -192,8 +192,8 @@ ipc::buffer::destruct( ipc::buffer *b,
 {
     if( unlink )
     {
-        ipc::sem::final_close( (ipc::sem::sem_key_t) b->index_sem_name );
-        ipc::sem::final_close( (ipc::sem::sem_key_t) b->alloc_sem_name );
+        ipc::sem::final_close( ipc::sem::convert_key( b->index_sem_name ) );
+        ipc::sem::final_close( ipc::sem::convert_key( b->alloc_sem_name ) );
     }
     shm::close( shm_handle,
                 (void**)&b,
@@ -394,8 +394,8 @@ ipc::buffer::find_channel( ipc::thread_local_data *data,
 {
     ipc::channel_id_t output = ipc::channel_not_found;
     /** acquire sem **/
-    auto *sem = data->index_semaphore;
-    if( sem_wait( sem ) != 0 )
+    auto sem = data->index_semaphore;
+    if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
     {
         std::perror( "Failed to wait, plz debug" );
         std::exit( EXIT_FAILURE );
@@ -405,7 +405,7 @@ ipc::buffer::find_channel( ipc::thread_local_data *data,
     
 
     /** release sem **/
-    if( sem_post( sem ) != 0 )
+    if( ipc::sem::post( sem ) == ipc::sem::uni_error )
     {
         std::perror( 
             "Failed to post semaphore, exiting given we can't recover from this!" );
@@ -420,8 +420,8 @@ ipc::buffer::remove_channel( ipc::thread_local_data *data,
                              const channel_id_t channel_id )
 {
     /** acquire sem **/
-    auto *sem = data->index_semaphore;
-    if( sem_wait( sem ) != 0 )
+    auto sem = data->index_semaphore;
+    if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
     {
         std::perror( "Failed to wait, plz debug" );
         std::exit( EXIT_FAILURE );
@@ -451,11 +451,9 @@ ipc::buffer::remove_channel( ipc::thread_local_data *data,
     //chennel_offset should have an appropriate error message 
     
     /** release sem **/
-    if( sem_post( sem ) != 0 )
+    if( ipc::sem::post( sem ) == ipc::sem::uni_error )
     {
-        std::perror( 
-            "Failed to post semaphore, exiting given we can't recover from this!" );
-        //FIXME - need a global error here
+        std::perror( "Failed to post semaphore, exiting given we can't recover from this!" );
         exit( EXIT_FAILURE );
     }
 
@@ -498,9 +496,8 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
          * Acquire semaphore, must go after allocate otherwise we have 
          * nested semaphore acquire and deadlock.
          */
-        auto *sem = tls->index_semaphore;
-        assert( sem != nullptr );
-        if( sem_wait( sem ) != 0 )
+        auto sem = tls->index_semaphore;
+        if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
         {
             std::perror( "Failed to wait, plz debug" );
             std::exit( EXIT_FAILURE );
@@ -509,16 +506,14 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
         --(ch_ptr->meta.ref_count);
 
         /** release sem **/
-        if( sem_post( sem ) != 0 )
+        if( ipc::sem::post( sem ) == ipc::sem::uni_error )
         {
-            std::perror( 
-                "Failed to post semaphore, exiting given we can't recover from this!" );
-            //FIXME - need a global error here
+            std::perror( "Failed to post semaphore, exiting given we can't recover from this!" );
             exit( EXIT_FAILURE );
         }
 
         /**
-         * ref_count was a debug, till we ran into an atomic alignment error 
+         * ref_count was a bug, till we ran into an atomic alignment error 
          * on A72 NXP platforms, likely an alignment issue, will see if we 
          * can fix by adjusting alignment. Could have been caused by spurious
          * pack(1) ifdef in the control structure. - jcb
@@ -800,10 +795,11 @@ ipc::buffer::_free(   ipc::thread_local_data *data,
                       const std::size_t       blocks )
 {
     /** LOCK **/
-    auto *sem = data->allocate_semaphore;
-    if( sem_wait( sem ) != 0 )
+    auto sem = data->allocate_semaphore;
+    if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
     {
-        std::perror( "Failed to wait on semaphore to allocate, aborting allocate!" );
+        std::perror( "Failed to wait on semaphore to allocate, aborting free operation!" );
+        return;
     }
     
     /**
@@ -819,10 +815,9 @@ ipc::buffer::_free(   ipc::thread_local_data *data,
     //HERE
     
     /** UNLOCK **/
-    if( sem_post( sem ) != 0 )
+    if( ipc::sem::post( sem ) == ipc::sem::uni_error )
     {
-        std::perror( 
-            "Failed to post semaphore, exiting given we can't recover from this!" );
+        std::perror( "Failed to post semaphore, exiting given we can't recover from this!" );
         exit( EXIT_FAILURE );
     }
 
@@ -1003,7 +998,7 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     errno = 0;
     //FIXME - need conversion function here
     ptr->index_semaphore    = ipc::sem::open( 
-        (ipc::sem::sem_key_t)(buffer->index_sem_name),
+        ipc::sem::convert_key( buffer->index_sem_name ),
         0x0,
         ipc::sem::file_rdwr );
     /**
@@ -1016,7 +1011,7 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     }
 
     ptr->allocate_semaphore = ipc::sem::open( 
-        (ipc::sem::sem_key_t)buffer->alloc_sem_name,
+        ipc::sem::convert_key( buffer->alloc_sem_name ),
         0x0,
         ipc::sem::file_rdwr );
 
