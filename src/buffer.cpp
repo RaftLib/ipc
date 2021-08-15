@@ -106,7 +106,6 @@ ipc::buffer::initialize( const std::string shm_handle )
             std::exit( EXIT_FAILURE );
         }
 
-
         if( ipc::sem::main_init( sem_id ) == -1 )
         {
             std::stringstream ss;
@@ -114,7 +113,6 @@ ipc::buffer::initialize( const std::string shm_handle )
             std::perror( ss.str().c_str() );
             std::exit( EXIT_FAILURE );
         }
-        std::cout << name << ": " << std::hex << (std::uintptr_t)sem_id << "\n";
         return( std::make_pair( sem_name, sem_id ) );    
     };
 
@@ -158,10 +156,8 @@ ipc::buffer::initialize( const std::string shm_handle )
 
     out_buffer->allocated_size      = size_we_need;
     out_buffer->databuffer_size     = buffer_size_nbytes;
-     
-    ipc::sem::sem_close( sem_alloc.second );
-    ipc::sem::sem_close( sem_index.second );
-    
+    ipc::sem::close( sem_alloc.second );
+    ipc::sem::close( sem_index.second );
 
     out_buffer->cookie.store( ipc::buffer_base::cookie_in_use, 
                                 std::memory_order_seq_cst);
@@ -196,8 +192,8 @@ ipc::buffer::destruct( ipc::buffer *b,
 {
     if( unlink )
     {
-        ipc::sem::main_close( (ipc::sem::sem_key_t) b->index_sem_name );
-        ipc::sem::main_close( (ipc::sem::sem_key_t) b->alloc_sem_name );
+        ipc::sem::final_close( (ipc::sem::sem_key_t) b->index_sem_name );
+        ipc::sem::final_close( (ipc::sem::sem_key_t) b->alloc_sem_name );
     }
     shm::close( shm_handle,
                 (void**)&b,
@@ -233,14 +229,14 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
      * Acquire semaphore, must go after allocate otherwise we have 
      * nested semaphore acquire and deadlock.
      */
-    auto *sem = data->index_semaphore;
-    assert( sem != nullptr );
-    if( sem_wait( sem ) != 0 )
+     //FIXME
+    auto sem = data->index_semaphore;
+    
+    if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
     {
         std::perror( "Failed to wait, plz debug" );
         std::exit( EXIT_FAILURE );
     }
-    
     //returns block that is modulo block_size
     channel_start  = 
         ipc::buffer::find_channel_buffer_offset( data, channel_id, &channel );
@@ -254,7 +250,6 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
             ipc::buffer::global_buffer_allocate(  data, 
                                                   blocks_to_allocate,
                                                   true ); 
-        
 
         if( mem_for_new_channel == nullptr )
         {
@@ -361,10 +356,9 @@ POST:
      * so check ret channel pointer for null below before adding it
      * to the TLS. 
      */
-    if( sem_post( sem ) != 0 )
+    if( ipc::sem::post( sem ) == ipc::sem::uni_error )
     {
         std::perror( "Failed to post semaphore, exiting given we can't recover from this!" );
-        //FIXME - need a global error here
         exit( EXIT_FAILURE );
     }
     
@@ -699,13 +693,13 @@ ipc::buffer::global_buffer_allocate( ipc::thread_local_data *data,
     
     //get thread local version of allocate semaphore
     /** LOCK **/
-    auto *sem = data->allocate_semaphore;
-    if( sem_wait( sem ) != 0 )
+    auto sem = data->allocate_semaphore;
+    std::cout << "here\n";
+    if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
     {
         std::perror( "Failed to wait on semaphore to allocate, aborting allocate!" );
-        return( nullptr );
+        return( output /** nullptr **/);
     }
-
 
     if( blocks_needed <= ipc::meta_info::heap_t::get_blocks_avail( &data->buffer->heap  ) )
     {
@@ -720,13 +714,13 @@ ipc::buffer::global_buffer_allocate( ipc::thread_local_data *data,
     //if not the right size, go to sem_post and we end up here. 
     
     /** UNLOCK **/
-    if( sem_post( sem ) != 0 )
+    if( ipc::sem::post( sem ) == ipc::sem::uni_error )
     {
         std::perror( "Failed to post semaphore, exiting given we can't recover from this!" );
-        //FIXME - need a global error here
+        //fatal error if we can't unlock, deadlock
         exit( EXIT_FAILURE );
     }
-    return( output );
+    return( output /** null or valid pointer **/);
 }
 
 
@@ -1007,7 +1001,7 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     //called in the context of the calling thread ID
     ptr = new thread_local_data();
     errno = 0;
-    
+    //FIXME - need conversion function here
     ptr->index_semaphore    = ipc::sem::open( 
         (ipc::sem::sem_key_t)(buffer->index_sem_name),
         0x0,
@@ -1022,7 +1016,7 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     }
 
     ptr->allocate_semaphore = ipc::sem::open( 
-        (ipc::sem::sem_key_t)buffer->index_sem_name,
+        (ipc::sem::sem_key_t)buffer->alloc_sem_name,
         0x0,
         ipc::sem::file_rdwr );
 
@@ -1067,8 +1061,8 @@ ipc::buffer::close_tls_structure( ipc::thread_local_data* data )
     std::cout << (*data) << "\n";
 #endif    
     // Close semaphores
-    ipc::sem::sem_close( data->allocate_semaphore );
-    ipc::sem::sem_close( data->index_semaphore    );
+    ipc::sem::close( data->allocate_semaphore );
+    ipc::sem::close( data->index_semaphore    );
     
     ::free( data );
     return;

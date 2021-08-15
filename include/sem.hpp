@@ -115,6 +115,8 @@ static constexpr sem_obj_t sem_error
 #endif
 ;
 
+static constexpr std::int32_t uni_error = -1;
+
 static constexpr sem_obj_t sem_init_value
     =
 #if __linux
@@ -186,24 +188,24 @@ static int main_init( ipc::sem::sem_obj_t id );
 static int sub_init( const ipc::sem::sem_obj_t id );
 
 /**
- * sem_close - to be called when calling process is
+ * close - to be called when calling process is
  * done with the current semaphore object, frees
  * resources associated with this process. This, 
  * however, does not release the semaphore. 
  * @param obj - valid sem_obj_t.
  * @return - (-1) if failure, (0) otherwise
  */
-static int sem_close( ipc::sem::sem_obj_t obj );
+static int close( ipc::sem::sem_obj_t obj );
 
 /**
- * main_close - called by main thread/process to
+ * final_close - called by main thread/process to
  * destroy and free any system resources associated
  * with the semaphore. This should not be called while
  * others are using the semaphore, UB results. 
  * @param obj - valid sem_obj_t
  * @return - (-1) if failure, (0) otherwise
  */
-static int main_close( ipc::sem::sem_key_t key );
+static int final_close( ipc::sem::sem_key_t key );
 
 /**
  * wait - wait on the given semaphore

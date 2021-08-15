@@ -174,10 +174,9 @@ ipc::sem::sub_init( const ipc::sem::sem_obj_t id )
 }
 
 int
-ipc::sem::sem_close( ipc::sem::sem_obj_t obj )
+ipc::sem::close( ipc::sem::sem_obj_t obj )
 {
 #ifdef __linux
-    assert( obj != nullptr );
     return( sem_close( obj ) );
 #elif __APPLE__
     //nothing to do, they're tracked system wide
@@ -190,7 +189,7 @@ ipc::sem::sem_close( ipc::sem::sem_obj_t obj )
 }
 
 int 
-ipc::sem::main_close( ipc::sem::sem_key_t key )
+ipc::sem::final_close( ipc::sem::sem_key_t key )
 {
 #ifdef __linux
     return( sem_unlink( key ) );
@@ -204,16 +203,16 @@ ipc::sem::main_close( ipc::sem::sem_key_t key )
 }
 
 int 
-ipc::sem::wait( ipc::sem::sem_obj_t key )
+ipc::sem::wait( ipc::sem::sem_obj_t obj )
 {
 #ifdef __linux
-    return( sem_wait( key ) );
+    return( sem_wait( obj ) );
 #elif __APPLE__
     struct sembuf sops;
     sops.sem_num = 1;
     sops.sem_flg = 0;
     sops.sem_op  = -1;
-    return( semop( key, &sops, 1 ) );
+    return( semop( obj, &sops, 1 ) );
 #else
     //unimplemented
     return( -1 );
