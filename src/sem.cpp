@@ -136,7 +136,6 @@ ipc::sem::main_init( ipc::sem::sem_obj_t id )
     sop.sem_op  = 1;
     sop.sem_flg = 0;
     //returns (-1) on err
-    std::cout << "or here\n";
     return( semop( id, &sop, 1 ) );
 #else
     //unimplemented

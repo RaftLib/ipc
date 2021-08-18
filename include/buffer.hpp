@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include <string>
+#include <sstream>
 #include "genericnode.hpp"
 #include "indexbase.hpp"
 #include "database.hpp"
@@ -35,6 +36,13 @@
 namespace ipc
 {
 
+struct global_err_t
+{
+    std::stringstream err_msg;
+    ipc::buffer       *buffer = nullptr;
+    std::string       shm_handle;
+};
+
 
 
 class buffer :
@@ -42,6 +50,14 @@ class buffer :
 
 {
 private:
+    static global_err_t gb_err;
+
+    /**
+     * err handling func
+     */
+    static void shutdown_handler( int signum );
+
+    
     /** 
      * set global block inc to be 1MiB, will allocate multiple 'x'
      * of this if the user requests large blocks.
