@@ -40,6 +40,19 @@ add_definitions( "-DL1D_CACHE_LINE_SIZE=${L1D_LINE_SIZE}" )
 
 include( ${CMAKE_CURRENT_SOURCE_DIR}/modules/localmodules.cmake )
 
+mark_as_advanced( USE_SYSTEMV_SEM )
+set( USE_SYSTEMV_SEM false CACHE BOOL "Enable use of SystemV semaphore behavior vs. POSIX semaphores." )
+if( USE_SYSTEMV_SEM )
+    add_definitions( "-D_USE_SYSTEMV_SEM_=1" )
+    add_definitions( "-D_USE_POSIX_SEM_=0" )
+else( USE_SYSTEMV_SEM )
+##
+# default is to use POSIX
+##
+    add_definitions( "-D_USE_SYSTEMV_SEM_=0" )
+    add_definitions( "-D_USE_POSIX_SEM_=1" )
+endif( USE_SYSTEMV_SEM )
+
 include_directories ( ${PROJECT_SOURCE_DIR} )
 include_directories ( ${PROJECT_SOURCE_DIR}/include )
 add_subdirectory( src )

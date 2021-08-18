@@ -35,7 +35,7 @@
 #include <vector>
 
 
-#if _SEM_SEMUN_UNDEFINED == 1
+#if (_SEM_SEMUN_UNDEFINED == 1) && (_USE_SYSTEMV_SEM_ == 1)
 extern "C"
 {
 union semun {
@@ -70,9 +70,9 @@ static const std::int32_t sem_read_write
 
 static const std::int32_t sem_create
     =
-#if __linux
+#if __linux && (_USE_POSIX_SEM_ == 1)
     (O_CREAT | O_EXCL)
-#elif __APPLE__ 
+#elif _USE_SYSTEMV_SEM_
     (IPC_EXCL | IPC_CREAT) 
 #endif
 ;
@@ -80,27 +80,22 @@ static const std::int32_t sem_create
 
 static const std::int32_t file_rdwr
     =
-/** both should be 0600, usr RD/WR **/    
-#if __linux
     (S_IWUSR | S_IRUSR)
-#elif __APPLE__ 
-    (S_IWUSR | S_IRUSR)
-#endif
 ;
 
 using sem_key_t
     =
-#if __linux
+#if (_USE_POSIX_SEM_ == 1) 
         char*
-#elif __APPLE__ 
+#elif (_USE_SYSTEMV_SEM_ == 1)
         key_t
 #endif
 ;
 
 using sem_obj_t = 
-#if __linux
+#if (_USE_POSIX_SEM_ == 1)
     sem_t*
-#elif __APPLE__ 
+#elif (_USE_SYSTEMV_SEM_ == 1)
     /** most likelyi std::int32_t on most systems, but just in case **/
     int
 #endif
@@ -108,9 +103,9 @@ using sem_obj_t =
 
 static constexpr sem_obj_t sem_error
     =
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     SEM_FAILED
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     -1 
 #endif
 ;
@@ -119,9 +114,9 @@ static constexpr std::int32_t uni_error = -1;
 
 static constexpr sem_obj_t sem_init_value
     =
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     nullptr
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     -1 
 #endif
 ;

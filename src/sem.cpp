@@ -41,11 +41,11 @@ ipc::sem::generate_key( const int max_length )
     std::mt19937 gen( rd() );
     std::uniform_int_distribution<> distrib;
     const int val = distrib( gen );
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     //string key
     //FIXME - need to handle memory here better
     return( strdup( std::to_string( val ).substr( 0, max_length ).c_str() ) );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     UNUSED( max_length );
     //integer key
     char *path = getcwd( nullptr, 0 );
@@ -63,7 +63,7 @@ ipc::sem::generate_key( const int max_length )
 void 
 ipc::sem::free_key( sem_key_t k )
 {
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     free( k );
 #else
     UNUSED( k );
@@ -75,14 +75,14 @@ ipc::sem::key_copy( void *dst,
                     const std::size_t dst_length, 
                     const sem_key_t   key )
 {
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     //string key
     std::memset( dst, '\0', dst_length );
     std::strncpy(   (char*) dst,
                     key,
                     dst_length );
     return( true );                    
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     //key_t key
     const auto key_size = sizeof( sem_key_t );
     std::memset( dst, 0x0, dst_length );
@@ -100,13 +100,13 @@ ipc::sem::open(     const sem_key_t key,
                     const std::int32_t flags, 
                     const std::int32_t fdperms )
 {
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     return( sem_open( 
             key, 
             flags, 
             fdperms, 
             0 ) );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     return( semget( key, 1, (flags | fdperms) ) ); 
 #endif
 }
@@ -115,9 +115,9 @@ ipc::sem::open(     const sem_key_t key,
 int 
 ipc::sem::main_init( ipc::sem::sem_obj_t id )
 {
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     return( sem_init( id, 1 /** multiprocess **/, 1 ) );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     //should return something other than (-1) on success
     union semun arg; 
     arg.val = 0;
@@ -147,11 +147,11 @@ ipc::sem::main_init( ipc::sem::sem_obj_t id )
 int 
 ipc::sem::sub_init( const ipc::sem::sem_obj_t id )
 {
-#if __linux
+#if _USE_POSIX_SEM_ == 1
     //nothing to do here
     UNUSED( id );
     return( 0 );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     struct  semid_ds    ds;
     union   semun       arg; 
     arg.buf = &ds;
@@ -177,9 +177,9 @@ ipc::sem::sub_init( const ipc::sem::sem_obj_t id )
 int
 ipc::sem::close( ipc::sem::sem_obj_t obj )
 {
-#ifdef __linux
+#if _USE_POSIX_SEM_ == 1
     return( sem_close( obj ) );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     UNUSED( obj );
     //nothing to do, they're tracked system wide
     //until we destroy
@@ -194,9 +194,9 @@ ipc::sem::close( ipc::sem::sem_obj_t obj )
 int 
 ipc::sem::final_close( ipc::sem::sem_key_t key )
 {
-#ifdef __linux
+#if _USE_POSIX_SEM_ == 1
     return( sem_unlink( key ) );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     union semun arg; 
     return( semctl( key, 0, IPC_RMID, arg ) );
 #else
@@ -208,9 +208,9 @@ ipc::sem::final_close( ipc::sem::sem_key_t key )
 int 
 ipc::sem::wait( ipc::sem::sem_obj_t obj )
 {
-#ifdef __linux
+#if _USE_POSIX_SEM_ == 1
     return( sem_wait( obj ) );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     struct sembuf sops;
     sops.sem_num = 1;
     sops.sem_flg = 0;
@@ -225,9 +225,9 @@ ipc::sem::wait( ipc::sem::sem_obj_t obj )
 int 
 ipc::sem::post( ipc::sem::sem_obj_t key )
 {
-#ifdef __linux
+#if _USE_POSIX_SEM_ == 1
     return( sem_post( key ) );
-#elif __APPLE__
+#elif _USE_SYSTEMV_SEM_ == 1
     struct sembuf sops;
     sops.sem_num = 1;
     sops.sem_flg = 0;
