@@ -34,16 +34,20 @@
 //FIXME need to double check to see IF THIS WORKS ON MSVC
 #endif
 
-ipc::sem::sem_key_t 
-ipc::sem::generate_key( const int max_length, const int proj_id )
+void 
+ipc::sem::generate_key( const int    max_length,
+                        const int    proj_id,
+                        sem_key_t    &key )
 {
 #if _USE_POSIX_SEM_ == 1
     //string key
+    UNUSED( proj_id );
     std::random_device rd;
     std::mt19937 gen( rd() );
     std::uniform_int_distribution<> distrib( 0, std::numeric_limits< int >::max() );
     const int val = distrib( gen );
-    return( strdup( std::to_string( val ).substr( 0, max_length ).c_str() ) );
+    ipc::sem::key_copy( key, max_length, std::to_string( val ).c_str() );
+    return;
 #elif _USE_SYSTEMV_SEM_ == 1
     UNUSED( max_length );
     //integer key
@@ -53,9 +57,8 @@ ipc::sem::generate_key( const int max_length, const int proj_id )
         std::perror( "failed to get cwd" );
         exit( EXIT_FAILURE );
     }
-    const auto output = ftok( path, proj_id);
-    free( path );
-    return( output );
+    key = ftok( path, proj_id);
+    return;
 #endif
 }
 

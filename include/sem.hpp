@@ -134,13 +134,10 @@ static constexpr sem_obj_t sem_init_value
  * @return - key, type of sem_key_t (note, type varies by
  * platform.
  */
-static sem_key_t generate_key( const int max_length,
-                               const int proj_id    );
+static void generate_key( const int    max_length,
+                          const int    proj_id,
+                          sem_key_t    &key);
 
-template < class T > static sem_key_t convert_key( T k )
-{
-    return( *reinterpret_cast< ipc::sem::sem_key_t* >( &k ) );
-}
 
 static void free_key( sem_key_t k );
 

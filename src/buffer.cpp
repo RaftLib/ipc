@@ -128,8 +128,11 @@ ipc::buffer::initialize( const std::string shm_handle )
      */
     auto sem_allocate_f = [&]( const std::string &&name, const int proj_id )->auto
     {
-        auto sem_name = ipc::sem::generate_key( ipc::sem::semaphore_length - 1, 
-                                                proj_id );
+        ipc::sem::sem_key_t  sem_name;
+        ipc::sem::generate_key( ipc::sem::semaphore_length - 1, 
+                                proj_id,
+                                sem_name );
+
         auto sem_id   = ipc::sem::open( sem_name,
                                         ipc::sem::sem_create,
                                         ipc::sem::file_rdwr );
