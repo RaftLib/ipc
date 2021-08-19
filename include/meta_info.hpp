@@ -60,8 +60,8 @@ public:
     heap_t                        heap;
     channel_list_t                channel_list;
 
-    sem_buffer_t                  index_sem_name    = { '\0' };
-    sem_buffer_t                  alloc_sem_name    = { '\0' };
+    ipc::sem::sem_key_t           index_sem_name;
+    ipc::sem::sem_key_t           alloc_sem_name;
 
 
     /**

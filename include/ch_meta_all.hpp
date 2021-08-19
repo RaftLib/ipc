@@ -21,6 +21,7 @@
 #define CH_META_ALL_HPP  1
 #include "bufferdefs.hpp"
 #include <cstdint>
+#include "sem.hpp"
 
 namespace ipc
 {
@@ -32,12 +33,12 @@ struct alignas( L1D_CACHE_LINE_SIZE ) ch_meta_all
     constexpr ch_meta_all( const ipc::channel_id_t ch_id ) : channel_id( ch_id ){}
 
     /** this thread id **/
-    ipc::channel_id_t  channel_id                        = 0;
+    ipc::channel_id_t   channel_id                        = 0;
    
-    ipc::refcnt_t      ref_count                         = 0; 
+    ipc::refcnt_t       ref_count                         = 0; 
     
-    ipc::channel_type  type                              = ipc::spsc; 
-    sem_buffer_t                    channel_semaphore    = { '\0' };
+    ipc::channel_type   type                              = ipc::spsc; 
+    ipc::sem::sem_key_t channel_semaphore                 = 0;
     /**
      * FIXME - consider making these a union or template dep.
      * vs. extra space, for right now we're eating up an entire 

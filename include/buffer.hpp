@@ -252,7 +252,7 @@ public:
      * already exists in the global context then this channel
      * is added to the local thread context with a zero allocation
      * (zero given this thread has yet to call allocate on this 
-     * channel). Call allocate once you have channels added to 
+     * c)hannel). Call allocate once you have channels added to 
      * get some memory. 
      * @param   tls - allocated and valid thread_local_data structure
      * @param   channel_id - id of channel you want to add to this

@@ -22,7 +22,7 @@
 #include <sys/errno.h>
 #include <cstring>
 #include <cassert>
-
+#include <limits>
 #include "sem.hpp"
 
 #ifndef UNUSED 
@@ -35,15 +35,14 @@
 #endif
 
 ipc::sem::sem_key_t 
-ipc::sem::generate_key( const int max_length )
+ipc::sem::generate_key( const int max_length, const int proj_id )
 {
-    std::random_device rd;
-    std::mt19937 gen( rd() );
-    std::uniform_int_distribution<> distrib;
-    const int val = distrib( gen );
 #if _USE_POSIX_SEM_ == 1
     //string key
-    //FIXME - need to handle memory here better
+    std::random_device rd;
+    std::mt19937 gen( rd() );
+    std::uniform_int_distribution<> distrib( 0, std::numeric_limits< int >::max() );
+    const int val = distrib( gen );
     return( strdup( std::to_string( val ).substr( 0, max_length ).c_str() ) );
 #elif _USE_SYSTEMV_SEM_ == 1
     UNUSED( max_length );
@@ -54,7 +53,7 @@ ipc::sem::generate_key( const int max_length )
         std::perror( "failed to get cwd" );
         exit( EXIT_FAILURE );
     }
-    const auto output = ftok( path, val );
+    const auto output = ftok( path, proj_id);
     free( path );
     return( output );
 #endif
@@ -71,9 +70,9 @@ ipc::sem::free_key( sem_key_t k )
 }
 
 bool      
-ipc::sem::key_copy( void *dst, 
-                    const std::size_t dst_length, 
-                    const sem_key_t   key )
+ipc::sem::key_copy(         ipc::sem::sem_key_t &dst,
+                    const   std::size_t         dst_length, 
+                    const   ipc::sem::sem_key_t key )
 {
 #if _USE_POSIX_SEM_ == 1
     //string key
@@ -83,10 +82,9 @@ ipc::sem::key_copy( void *dst,
                     dst_length );
     return( true );                    
 #elif _USE_SYSTEMV_SEM_ == 1
+    UNUSED( dst_length );
     //key_t key
-    const auto key_size = sizeof( sem_key_t );
-    std::memset( dst, 0x0, dst_length );
-    std::memcpy( dst, &key, key_size );
+    dst = key;
     return( true );
 #else
     //not implemented
@@ -196,8 +194,10 @@ ipc::sem::final_close( ipc::sem::sem_key_t key )
 #if _USE_POSIX_SEM_ == 1
     return( sem_unlink( key ) );
 #elif _USE_SYSTEMV_SEM_ == 1
+    //get key first from key
+    const auto _id = ipc::sem::open( key, 0x0, ipc::sem::file_rdwr );
     union semun arg; 
-    return( semctl( key, 0, IPC_RMID, arg ) );
+    return( semctl( _id, 0, IPC_RMID, arg ) );
 #else
     //unimpleemnted
     return( -1 );
@@ -211,7 +211,7 @@ ipc::sem::wait( ipc::sem::sem_obj_t obj )
     return( sem_wait( obj ) );
 #elif _USE_SYSTEMV_SEM_ == 1
     struct sembuf sops;
-    sops.sem_num = 1;
+    sops.sem_num = 0;
     sops.sem_flg = 0;
     sops.sem_op  = -1;
     return( semop( obj, &sops, 1 ) );
@@ -228,7 +228,7 @@ ipc::sem::post( ipc::sem::sem_obj_t key )
     return( sem_post( key ) );
 #elif _USE_SYSTEMV_SEM_ == 1
     struct sembuf sops;
-    sops.sem_num = 1;
+    sops.sem_num = 0;
     sops.sem_flg = 0;
     sops.sem_op  = 1;
     return( semop( key, &sops, 1 ) );

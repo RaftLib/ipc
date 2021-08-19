@@ -68,6 +68,9 @@ static const std::int32_t sem_read_write
 #endif
 ;
 
+
+
+
 static const std::int32_t sem_create
     =
 #if __linux && (_USE_POSIX_SEM_ == 1)
@@ -83,10 +86,13 @@ static const std::int32_t file_rdwr
     (S_IWUSR | S_IRUSR)
 ;
 
+
+static constexpr auto semaphore_length = 24;
+
 using sem_key_t
     =
 #if (_USE_POSIX_SEM_ == 1) 
-        char*
+        char[ semaphore_length ]
 #elif (_USE_SYSTEMV_SEM_ == 1)
         key_t
 #endif
@@ -128,7 +134,8 @@ static constexpr sem_obj_t sem_init_value
  * @return - key, type of sem_key_t (note, type varies by
  * platform.
  */
-static sem_key_t generate_key( const int max_length );
+static sem_key_t generate_key( const int max_length,
+                               const int proj_id    );
 
 template < class T > static sem_key_t convert_key( T k )
 {
@@ -149,9 +156,9 @@ static void free_key( sem_key_t k );
  * @return true of dst was large enough to provide
  * a copy, false otherwise.
  */
-static bool      key_copy( void *dst, 
-                           const std::size_t dst_length, 
-                           const sem_key_t   key );
+static bool      key_copy(         ipc::sem::sem_key_t &dst,
+                    const   std::size_t         dst_length, 
+                    const   ipc::sem::sem_key_t key ); 
 
 /**
  * open - open a semaphore. key must be provided 
@@ -201,7 +208,7 @@ static int close( ipc::sem::sem_obj_t obj );
  * destroy and free any system resources associated
  * with the semaphore. This should not be called while
  * others are using the semaphore, UB results. 
- * @param obj - valid sem_obj_t
+ * @param key - valkey sem_key_t
  * @return - (-1) if failure, (0) otherwise
  */
 static int final_close( ipc::sem::sem_key_t key );
