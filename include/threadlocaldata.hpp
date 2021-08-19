@@ -24,6 +24,7 @@
 #include <map>
 #include "bufferdefs.hpp"
 #include "channelinfo.hpp"
+#include "sem.hpp"
 
 namespace ipc
 {
@@ -59,7 +60,7 @@ struct thread_local_data
      * is to guard allocations and ensure 
      * buffers handed out are unique. 
      */
-    sem_t *allocate_semaphore = nullptr;
+    ipc::sem::sem_obj_t allocate_semaphore;
     /**
      * index_semaphore - local copy of semaphore
      * that is really only needed when opening
@@ -67,7 +68,7 @@ struct thread_local_data
      * when you start-up and closed when you
      * exit, otherwise, don't touch this. 
      */
-    sem_t *index_semaphore    = nullptr;
+    ipc::sem::sem_obj_t index_semaphore;
 
 
     

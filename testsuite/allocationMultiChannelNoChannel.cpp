@@ -27,7 +27,7 @@ int main()
 
     //we're allocating one channel with it's meta data so should be exactly
     //2 blocks 
-    const auto ret_code  = ipc::buffer::add_spsc_lf_channel( fake_tls, channel_id );
+    const auto ret_code  = ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id );
     
     switch( ret_code )
     {
@@ -74,7 +74,7 @@ int main()
     {
         std::cout << "failed to return null when no channel exists\n";
         ipc::buffer::close_tls_structure( fake_tls );
-        ipc::buffer::destruct( buffer, "thehandle", true );
+        ipc::buffer::destruct( buffer, "thehandle" );
         //this is where we're supposed to fail 
         exit( EXIT_SUCCESS );
     }
@@ -87,7 +87,7 @@ int main()
     {
         std::cerr << "Failed at allocate\n";
         ipc::buffer::close_tls_structure( fake_tls );
-        ipc::buffer::destruct( buffer, "thehandle", true );
+        ipc::buffer::destruct( buffer, "thehandle" );
         exit( EXIT_FAILURE );
     }
     for( auto i( 0 ); i < 128; i++ )
@@ -117,6 +117,6 @@ int main()
     std::cout << 
         ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (262144)\n"; 
 
-    ipc::buffer::destruct( buffer, "thehandle", true );
+    ipc::buffer::destruct( buffer, "thehandle" );
     return( EXIT_SUCCESS );
 }

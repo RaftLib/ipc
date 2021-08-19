@@ -43,13 +43,13 @@ void producer(  const int count,
     const auto thread_id    = getpid();
     auto *tls_producer      = ipc::buffer::get_tls_structure( buffer, thread_id );
     /** create two channels, single process, single thread **/
-    if( ipc::buffer::add_spsc_lf_channel( tls_producer, 
+    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, 
                                           channel_id_a ) == ipc::channel_err )
     {
         return;
     }
     
-    if( ipc::buffer::add_spsc_lf_channel( tls_producer, 
+    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, 
                                           channel_id_b ) == ipc::channel_err )
     {
         return;
@@ -94,7 +94,7 @@ void consumer(  const int count,
 {
     const auto thread_id    = getpid();
     auto *tls_consumer      = ipc::buffer::get_tls_structure( buffer, thread_id );
-    if( ipc::buffer::add_spsc_lf_channel( tls_consumer, channel_id ) == ipc::channel_err )
+    if( ipc::buffer::add_spsc_lf_record_channel( tls_consumer, channel_id ) == ipc::channel_err )
     {
         return;
     }
@@ -172,7 +172,7 @@ int main()
         waitpid( -1, &status, 0 );
         //buffer shouldn't destruct completely till everybody 
         //is done using it. 
-        ipc::buffer::destruct( buffer, "thehandle", true );
+        ipc::buffer::destruct( buffer, "thehandle" );
     }
     else
     {
@@ -182,6 +182,7 @@ int main()
         std::thread dest2( consumer, count, channel_id_b, buffer );
         dest1.join();
         dest2.join();
+        //unmap buffer from callee VA space
         ipc::buffer::destruct( buffer, "thehandle", false );
     }
     return( EXIT_SUCCESS );

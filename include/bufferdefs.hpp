@@ -41,11 +41,7 @@ namespace ipc
      */
     static constexpr std::uint8_t block_size_power_two = 12; //4KiB
     static constexpr std::uint8_t buffer_size_pow_two  = 30; //1GiB
-    /**
-     * max semaphore length.
-     */
-    static constexpr auto semaphore_length  = 24;
-    using sem_buffer_t = char[ semaphore_length ];
+    
     /** 
      * ptr_offset_t - to represent offsets within 
      * linked lists and like things inside our 
