@@ -29,7 +29,6 @@
 #include <thread>
 #include <atomic>
 
-#undef DEBUG 
 
 using lf_queue_t = 
     ipc::mpmc_lock_free_queue< ipc::channel_info      /** control region **/, 
@@ -61,9 +60,6 @@ void producer(  const std::size_t count,
         
         while( lf_queue_t::push( ch_info, record, buffer ) != ipc::tx_success );
     }
-#if DEBUG    
-    std::cout << "completed push sequence\n";
-#endif    
     return;
 }
 
@@ -87,11 +83,6 @@ void consumer( const std::size_t count,
         }
         if( record != nullptr )
         {
-#if DEBUG
-            std::cout << "(" << record->_id << ") - (" << count_tracker << ")\n";
-            std::cout << *record << "\n";
-            std::cout << *ch_info << "\n";
-#endif
             if( record->_id != count_tracker)
             {
                 std::cerr << "buffer failed async tests @ consumer, (" << 
@@ -111,9 +102,6 @@ void consumer( const std::size_t count,
 
         }
     }
-#if DEBUG    
-    std::cout << "count should be (131071)\n";
-#endif    
     return;
 }
 
@@ -149,5 +137,3 @@ int main()
 
     return( EXIT_SUCCESS );
 }
-
-#undef DEBUG

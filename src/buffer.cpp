@@ -31,11 +31,6 @@
 #include "sem.hpp"
 #include "buffer.hpp"
 
-#ifdef DEBUG
-#include <thread>
-#include <chrono>
-#include <atomic>
-#endif
 #include <errno.h>
 #include "allocation_metadata.hpp"
 #include "allocationexception.hpp"
@@ -126,9 +121,12 @@ ipc::buffer::initialize( const std::string shm_handle )
     /**
      * avoid duplicate code with lambda 
      */
-    auto sem_allocate_f = [&]( const std::string &&name, const int proj_id )->auto
+    auto sem_allocate_f = []( 
+        const std::string &&name, 
+        const int proj_id,
+        ipc::sem::sem_key_t &sem_name
+        )->auto
     {
-        ipc::sem::sem_key_t  sem_name;
         ipc::sem::generate_key( ipc::sem::semaphore_length - 1, 
                                 proj_id,
                                 sem_name );
@@ -147,17 +145,25 @@ ipc::buffer::initialize( const std::string shm_handle )
             ipc::buffer::gb_err.err_msg << "failed to init index semaphore, (" << name << "), exiting";
             raise( SIGUSR1 );
         }
-        return( std::make_pair( sem_name, sem_id ) );    
+        /**
+         * changed from std::pair to returning the active/open
+         * sem so we don't run into the ret val optimization bug
+         */
+        return( sem_id );    
     };
-
-    auto sem_alloc = sem_allocate_f( "alloc", 0x13 );
-    auto sem_index = sem_allocate_f( "index", 0x14 );
+    ipc::sem::sem_key_t alloc_sem_name  = {0};
+    auto sem_alloc = sem_allocate_f( "alloc", 0x13, alloc_sem_name );
+    ipc::sem::sem_key_t index_sem_name  = {0};
+    auto sem_index = sem_allocate_f( "index", 0x14, index_sem_name );
     
+
     /**
      * STEP 2, set up object allocation
      */
     assert( memory != nullptr );
     auto *out_buffer = new (memory) ipc::buffer();
+    
+    
     ipc::buffer::gb_err.buffer = out_buffer;
     /**
      * STEP 3, initialize data structures inside object
@@ -178,26 +184,23 @@ ipc::buffer::initialize( const std::string shm_handle )
     //strcopy index
     ipc::sem::key_copy( out_buffer->index_sem_name,
                         ipc::sem::semaphore_length - 1,
-                        sem_index.first );
+                        index_sem_name );
 
 
     //strcopy alloc sem name
     ipc::sem::key_copy( out_buffer->alloc_sem_name,
                         ipc::sem::semaphore_length - 1,
-                        sem_alloc.first );
+                        alloc_sem_name );
     
-
-
 
     out_buffer->allocated_size      = size_we_need;
     out_buffer->databuffer_size     = buffer_size_nbytes;
-    ipc::sem::close( sem_alloc.second );
-    ipc::sem::close( sem_index.second );
+    
+    ipc::sem::close( sem_alloc );
+    ipc::sem::close( sem_index );
 
     out_buffer->cookie.store( ipc::buffer_base::cookie_in_use, 
-                                std::memory_order_seq_cst);
-   
-    //FIXME - implement crash log to kill off the sem and shm handle
+                              std::memory_order_seq_cst);
     return( out_buffer );
 }
 
@@ -229,11 +232,15 @@ ipc::buffer::destruct( ipc::buffer *b,
     {
         if( ipc::sem::final_close( b->index_sem_name ) == -1 )
         {
-            std::cerr << "error on destruction, continuing\n"; 
+            std::stringstream errstr;
+            errstr << "error on destruction with sem name (" << b->index_sem_name << ")";
+            std::perror( errstr.str().c_str() );
         }
         if( ipc::sem::final_close( b->alloc_sem_name ) == -1 )
         {
-            std::cerr << "error on destruction, continuing\n"; 
+            std::stringstream errstr;
+            errstr << "error on destruction with sem name (" << b->alloc_sem_name << ")";
+            std::perror( errstr.str().c_str() );
         }
     }
     shm::close( shm_handle,
@@ -296,9 +303,6 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         if( mem_for_new_channel == nullptr )
         {
             channel_start = ipc::channel_alloc_err;
-#if DEBUG
-            std::cerr << "failed to allocate memory for channel\n";
-#endif
             goto POST;
 
         }
@@ -311,18 +315,11 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         /** need to calculate channel start, don't change pointer yet, we need that **/
         channel_start = meta_offset + meta_multiple;
 
-#if DEBUG    
-        //simplify checking channel allocate with gdb
-        auto *temp =     
-#endif        
         //make an actual meta-data structure
         new (mem_for_new_channel) ipc::allocate_metadata( 
             channel_start           /** help the allocator find the base and de-allocate this block **/,
             channel_info_multiple   /** count of blocks allocated, not including metadata **/
         );
-#if DEBUG        
-        UNUSED( temp );
-#endif        
         
         
         mem_for_new_channel = ipc::buffer::translate_block( &data->buffer->data, channel_start );
@@ -375,10 +372,6 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
                                                    channel_start,
                                                    &(data->buffer->channel_list) ) )
         {
-#if DEBUG
-            std::cerr << "failed to add channel to the channel list, printing channel info:\n";
-            std::cerr << (*channel) << "\n";
-#endif
             channel_start  = ipc::channel_err;
         }
     
@@ -481,9 +474,6 @@ ipc::buffer::remove_channel( ipc::thread_local_data *data,
      
     if( channel_offset >= ipc::valid_offset )
     {
-#if DEBUG    
-        std::cout << "calling remove channel, found channel\n";
-#endif        
         
         /** remove the node **/
         ipc::buffer::channel_list_t::remove( &data->buffer->data,  
@@ -574,9 +564,6 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
          */
         if( ch_ptr->meta.ref_count == 0 )
         {
-#if DEBUG        
-            std::cout << "calling remove channel for (" << ch_pair.first << ")\n";
-#endif            
             ipc::buffer::remove_channel( tls, ch_pair.first );
         }
     }
@@ -789,9 +776,6 @@ ipc::buffer::allocate_record( ipc::thread_local_data *data,
     auto channel_found = data->channel_local_allocation.find( channel_id );
     if( channel_found == data->channel_local_allocation.end() )
     {
-#if DEBUG        
-        std::cerr << "channel not found\n";
-#endif        
         return( nullptr );
     }
 
@@ -923,9 +907,6 @@ ipc::buffer::send_record( ipc::thread_local_data *tls_data,
     auto channel_found = tls_data->channel_map.find( channel_id );
     if( channel_found == tls_data->channel_map.end() )
     {
-#if DEBUG     
-        std::cerr << "channel not found @ send_record\n";
-#endif        
         return( ipc::no_such_channel );
     }
     //get channel structure
@@ -991,9 +972,6 @@ ipc::buffer::receive_record( ipc::thread_local_data *tls_data,
     auto channel_found = tls_data->channel_map.find( channel_id );
     if( channel_found == tls_data->channel_map.end() )
     {
-#if DEBUG     
-        std::cerr << "channel not found @ send_record\n";
-#endif        
         return( ipc::no_such_channel );
     }
     auto *channel_info = (*channel_found).second;  
@@ -1106,17 +1084,7 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
 void
 ipc::buffer::close_tls_structure( ipc::thread_local_data* data )
 {
-#if DEBUG
-    std::cout << "overall blocks available before: " << 
-        ipc::meta_info::heap_t::get_current_free( &data->buffer->heap  ) << "\n";
-    std::cout << "channels before and after tls destruct\n";
-#endif    
     ipc::buffer::unlink_channels( data );
-#if DEBUG    
-    std::cout << "overall blocks available after: " << 
-        ipc::meta_info::heap_t::get_current_free( &data->buffer->heap  ) << "\n";
-    std::cout << (*data) << "\n";
-#endif    
     // Close semaphores
     ipc::sem::close( data->allocate_semaphore );
     ipc::sem::close( data->index_semaphore    );

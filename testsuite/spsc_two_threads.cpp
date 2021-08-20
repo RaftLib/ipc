@@ -57,9 +57,6 @@ void producer(  const int count,
     }
     ipc::buffer::unlink_channels( tls_producer );
     ipc::buffer::close_tls_structure( tls_producer );
-#if DEBUG    
-    std::cout << "completed push sequence\n";
-#endif    
     return;
 }
 
@@ -98,9 +95,6 @@ void consumer(  const int count,
         count_tracker++;
         
     }while( value != (count - 1) );
-#if DEBUG    
-    std::cout << "count should be (131071)\n";
-#endif    
     //just remove all channels for this tls block, we only have one
     ipc::buffer::unlink_channels( tls_consumer );
     ipc::buffer::close_tls_structure( tls_consumer );

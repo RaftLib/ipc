@@ -42,9 +42,9 @@ ipc::sem::generate_key( const int    max_length,
 #if _USE_POSIX_SEM_ == 1
     //string key
     UNUSED( proj_id );
-    std::random_device rd;
-    std::mt19937 gen( rd() );
-    std::uniform_int_distribution<> distrib( 0, std::numeric_limits< int >::max() );
+    static std::random_device rd;
+    static std::mt19937 gen( rd() );
+    static std::uniform_int_distribution<> distrib( 0, std::numeric_limits< int >::max() );
     const int val = distrib( gen );
     ipc::sem::key_copy( key, max_length, std::to_string( val ).c_str() );
     return;
@@ -54,8 +54,8 @@ ipc::sem::generate_key( const int    max_length,
     char *path = getcwd( nullptr, 0 );
     if( path == nullptr )
     {
-        std::perror( "failed to get cwd" );
-        exit( EXIT_FAILURE );
+        std::perror( "failed to get cwd, switching to guns (/)" );
+        path = "/";
     }
     key = ftok( path, proj_id);
     return;

@@ -52,9 +52,6 @@ void producer( const int count, ipc::channel_info *ch_info, void *buffer, gate_t
         *((int*)record) = i;
         while( lf_queue_t::push( ch_info, record, buffer ) != ipc::tx_success );
     }
-#if DEBUG    
-    std::cout << "completed push sequency\n";
-#endif    
     return;
 }
 
@@ -80,13 +77,7 @@ void consumer( const int count, ipc::channel_info *ch_info, void *buffer, gate_t
             exit( EXIT_FAILURE );
         }
         count_tracker++;
-#if DEBUG
-        std::cout << *record << "\n";
-#endif
     }while( *record != (count - 1) );
-#if DEBUG    
-    std::cout << "count should be (131071)\n";
-#endif    
     return;
 }
 
