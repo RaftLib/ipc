@@ -55,9 +55,12 @@ ipc::sem::generate_key( const int    max_length,
     if( path == nullptr )
     {
         std::perror( "failed to get cwd, switching to guns (/)" );
-        path = "/";
+        key = ftok( "/", proj_id);
     }
-    key = ftok( path, proj_id);
+    else
+    {
+        key = ftok( path, proj_id);
+    }
     return;
 #endif
 }
