@@ -40,23 +40,31 @@ add_definitions( "-DL1D_CACHE_LINE_SIZE=${L1D_LINE_SIZE}" )
 
 include( ${CMAKE_CURRENT_SOURCE_DIR}/modules/localmodules.cmake )
 
+
 mark_as_advanced( USE_SYSTEMV_SEM )
 set( USE_SYSTEMV_SEM false CACHE BOOL "Enable use of SystemV semaphore behavior vs. POSIX semaphores." )
 if( USE_SYSTEMV_SEM )
 message( STATUS "Using SystemV semaphores." )
-    add_definitions( "-D_USE_SYSTEMV_SEM_=1" )
-    add_definitions( "-D_USE_POSIX_SEM_=0" )
+    set( SYSTEMV_SEM 1 )
+    set( POSIX_SEM 0 )
 else( USE_SYSTEMV_SEM )
 ##
 # default is to use POSIX
 ##
 message( STATUS "Using POSIX semaphores." )
-    add_definitions( "-D_USE_SYSTEMV_SEM_=0" )
-    add_definitions( "-D_USE_POSIX_SEM_=1" )
+    set( SYSTEMV_SEM 0 )
+    set( POSIX_SEM 1 )
 endif( USE_SYSTEMV_SEM )
+
+add_definitions( "-D_USE_SYSTEMV_SEM_=${SYSTEMV_SEM}" )
+add_definitions( "-D_USE_POSIX_SEM_=${POSIX_SEM}" )
+
+configure_file( "moduleflags.hpp.in" "moduleflags.hpp" @ONLY )
 
 include_directories ( ${PROJECT_SOURCE_DIR} )
 include_directories ( ${PROJECT_SOURCE_DIR}/include )
+include_directories ( ${CMAKE_CURRENT_BINARY_DIR} )
+
 add_subdirectory( src )
 
 mark_as_advanced( BUILD_TESTS )

@@ -25,6 +25,8 @@
 
 #include <sys/types.h>
 
+#include "moduleflags.hpp"
+
 #ifndef UNUSED 
 #ifdef __clang__
 #define UNUSED( x ) (void)(x)

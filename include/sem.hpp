@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include "moduleflags.hpp"
 
 #if (_SEM_SEMUN_UNDEFINED == 1) && (_USE_SYSTEMV_SEM_ == 1)
 extern "C"
