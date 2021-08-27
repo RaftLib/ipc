@@ -15,3 +15,6 @@ target_compile_options( heapalloc
                         "-W" "-Wall" "-Wextra" "-Wpedantic" )
 
 endif()
+
+install( TARGETS heapalloc
+         ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
