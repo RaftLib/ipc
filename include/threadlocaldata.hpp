@@ -100,7 +100,7 @@ inline std::ostream& operator << ( std::ostream &s, ipc::thread_local_data &d )
     s << "{\n";
     s << "thread_id   : " << d.thread_id << "\n";
     s << "per-channel info: \n";
-    for( const auto ch_pair : d.channel_map )
+    for( const auto &ch_pair : d.channel_map )
     {
         ipc::channel_info *ch_info = d.channel_map[ ch_pair.first ];
         const auto &al_info = d.channel_local_allocation[ ch_pair.first ];
