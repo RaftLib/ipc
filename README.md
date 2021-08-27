@@ -39,6 +39,7 @@ const auto channel_id = 1;
  * up to 1MiB. The consumer must know that channel_id is the correct
  * channel and also the type of channel otherwise an error will be 
  * thrown. 
+ */
 ipc::buffer::add_spsc_lf_record_channel( tls_producer, channel_id )
 
 /** get some memory and do something with it **/
@@ -58,8 +59,10 @@ while( ipc::buffer::send_record( tls_producer,
 /** close tls **/
 ipc::buffer::close_tls_structure( tls_producer );
 
-/** destroy the buffer, call unlink if you're done with it **/
-ipc::buffer::destruct( buffer, "thehandle", true );
+/** destroy the buffer **/
+ipc::buffer::destruct( buffer       /** buffer ptr  **/, 
+                       "thehandle"  /** file handle **/, 
+                       true         /** unlink, true if you're the last user **/);
 ```
 
 # Compiling
