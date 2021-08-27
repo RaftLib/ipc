@@ -32,6 +32,15 @@ auto *buffer = ipc::buffer::initialize( "thehandle"  );
 /** get a thread local data structure for the buffer with thread id **/
 auto *tls_producer      = ipc::buffer::get_tls_structure( buffer,
                                                           thread_id );
+const auto channel_id = 1;
+/**
+ * allocate a channel that is a single-producer, single consumer
+ * record channel, record channels are used for larger allocations
+ * up to 1MiB. The consumer must know that channel_id is the correct
+ * channel and also the type of channel otherwise an error will be 
+ * thrown. 
+ipc::buffer::add_spsc_lf_record_channel( tls_producer, channel_id )
+
 /** get some memory and do something with it **/
 int *output = (int*)
 ipc::buffer::allocate_record( tls_producer, 
