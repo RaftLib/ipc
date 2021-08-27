@@ -1,0 +1,13 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=@CMAKE_INSTALL_PREFIX@/lib
+includedir=@CMAKE_INSTALL_PREFIX@/include
+
+Name: ipc 
+URL: http://raftlib.io
+Description: Library for inter-process/thread communication
+Version: 2021.08
+Requires: shm 
+Conflicts: 
+Libs:  -L${libdir} @CMAKE_THREAD_LIBS_INIT@ @CMAKE_RT_LINK@ -lipcbuffer -lheapalloc -lpthread @CMAKE_NUMA_LINK@
+Libs.private: ipcbuffer
+Cflags:  -std=c++17 -I${includedir}

@@ -59,13 +59,13 @@ endif( USE_SYSTEMV_SEM )
 add_definitions( "-D_USE_SYSTEMV_SEM_=${SYSTEMV_SEM}" )
 add_definitions( "-D_USE_POSIX_SEM_=${POSIX_SEM}" )
 
-set( MODULEHEADER "moduleflags.hpp" )
-configure_file( "moduleflags.hpp.in" ${MODULEHEADER} @ONLY )
-install( FILES ${CMAKE_CURRENT_BINARY_DIR}/${MODULEHEADER} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/ )
+set( MODULEHEADER "ipc_moduleflags.hpp" )
+configure_file( ${PROJECT_SOURCE_DIR}/include/ipc_moduleflags.hpp.in ${PROJECT_BINARY_DIR}/include/${MODULEHEADER} @ONLY )
+install( FILES ${PROJECT_BINARY_DIR}/include/${MODULEHEADER} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/ )
 
 include_directories ( ${PROJECT_SOURCE_DIR} )
 include_directories ( ${PROJECT_SOURCE_DIR}/include )
-include_directories ( ${CMAKE_CURRENT_BINARY_DIR} )
+include_directories ( ${PROJECT_BINARY_DIR}/include )
 
 add_subdirectory( include )
 add_subdirectory( src )

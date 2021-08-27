@@ -25,7 +25,7 @@
 
 #include <sys/types.h>
 
-#include "moduleflags.hpp"
+#include "ipc_moduleflags.hpp"
 
 #ifndef UNUSED 
 #ifdef __clang__
