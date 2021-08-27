@@ -25,6 +25,8 @@
 
 #include <sys/types.h>
 
+#include "ipc_moduleflags.hpp"
+
 #ifndef UNUSED 
 #ifdef __clang__
 #define UNUSED( x ) (void)(x)

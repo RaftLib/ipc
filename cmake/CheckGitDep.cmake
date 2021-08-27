@@ -1,8 +1,9 @@
 ##
 # check out other repos we need
 ##
-set( DEPDIR ${CMAKE_SOURCE_DIR}/git-dep )
-
+set( DEPDIR git-dep )
+set( DEPSRC ${PROJECT_SOURCE_DIR}/${DEPDIR} )
+set( DEPBIN ${PROJECT_BINARY_DIR}/${DEPDIR} )
 ##
 # add definitions needed bymodules, if any
 ##
@@ -10,7 +11,7 @@ set( DEPDIR ${CMAKE_SOURCE_DIR}/git-dep )
 ##
 # LIST MODULES HERE
 ##
-include( ${DEPDIR}/gitmodules.cmake )
+include( ${DEPSRC}/gitmodules.cmake )
 
 ##
 # NOW CHECK THEM OUT 
@@ -18,31 +19,37 @@ include( ${DEPDIR}/gitmodules.cmake )
 include(ExternalProject)
 
 foreach( GMOD ${GIT_MODULES} )
- message( STATUS  "Initializing sub-module ${DEPDIR}/${GMOD} from git repo!" )
- execute_process( COMMAND git submodule init ${DEPDIR}/${GMOD}
-                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}) 
- execute_process( COMMAND git submodule update ${DEPDIR}/${GMOD} 
-                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+ message( STATUS  "Initializing sub-module ${DEPSRC}/${GMOD} from git repo!" )
+ execute_process( COMMAND git submodule init ${DEPSRC}/${GMOD}
+                  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}) 
+ execute_process( COMMAND git submodule update ${DEPSRC}/${GMOD} 
+                  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
  ##
  # build execs if needed
  ##
- if( EXISTS ${DEPDIR}/${GMOD}/CMakeLists.txt )
-    add_subdirectory( ${DEPDIR}/${GMOD} )
- elseif( EXISTS ${DEPDIR}/${GMOD}/autogen.sh )
-    ##TODO, need to cleanup in-source build manually...should fix
-    message( STATUS "Found automake dir in git-dep, attempting to incorporate..." )
-    ExternalProject_Add( ${GMOD}
-        SOURCE_DIR ${DEPDIR}/${GMOD}
-        CONFIGURE_COMMAND ${DEPDIR}/${GMOD}/autogen.sh && ${DEPDIR}/${GMOD}/configure --prefix=${DEPDIR}/${GMOD}
-        TEST_COMMAND make test
-        BUILD_COMMAND make clean && make
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1 )
- endif( EXISTS ${DEPDIR}/${GMOD}/CMakeLists.txt )
+ if( EXISTS ${DEPSRC}/${GMOD}/CMakeLists.txt )
+    add_subdirectory( ${DEPSRC}/${GMOD} )
+ endif( EXISTS ${DEPSRC}/${GMOD}/CMakeLists.txt )
  ##
  # assume we have an include dir in the sub-module
  ##
- if( EXISTS ${DEPDIR}/${GMOD}/include )
-    include_directories( ${DEPDIR}/${GMOD}/include )
- endif( EXISTS ${DEPDIR}/${GMOD}/include )
+ if( EXISTS ${DEPSRC}/${GMOD}/include )
+    include_directories( ${DEPSRC}/${GMOD}/include )
+ endif( EXISTS ${DEPSRC}/${GMOD}/include )
+ 
+ ##
+ # assume that submodules could have processed headers
+ # in the build tree include dir
+ ##
+ if( EXISTS ${DEPBIN}/${GMOD}/include )
+    include_directories( ${DEPBIN}/${GMOD}/include )
+ endif( EXISTS ${DEPBIN}/${GMOD}/include )
+ ##
+ # assume they could be in the build tree root dir
+ ##
+ if( EXISTS ${DEPBIN}/${GMOD}/ )
+    include_directories( ${DEPBIN}/${GMOD}/ )
+ endif( EXISTS ${DEPBIN}/${GMOD}/ )
+
+
 endforeach( GMOD ${GIT_MODULES} )

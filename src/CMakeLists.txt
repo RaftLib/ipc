@@ -1,7 +1,7 @@
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 find_package( LIBRT )
-add_library( buffer 
+add_library( ipcbuffer 
                 sem.cpp
                 buffer.cpp 
                 translate.cpp
@@ -11,7 +11,7 @@ add_library( buffer
                 buffer_base.cpp )
 
 
-target_link_libraries( buffer
+target_link_libraries( ipcbuffer
                                      ${CMAKE_THREAD_LIBS_INIT} 
                                      pthread 
                                      shm 
@@ -20,5 +20,5 @@ target_link_libraries( buffer
                                      ${CMAKE_NUMA_LIBS} )
 
 
-install( TARGETS buffer
+install( TARGETS ipcbuffer
          ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )

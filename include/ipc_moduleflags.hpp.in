@@ -1,0 +1,12 @@
+
+#ifndef L1D_CACHE_LINE_SIZE
+#define L1D_CACHE_LINE_SIZE @L1D_LINE_SIZE@
+#endif 
+
+#ifndef _USE_SYSTEMV_SEM_
+#define _USE_SYSTEMV_SEM_ @SYSTEMV_SEM@
+#endif
+
+#ifndef _USE_POSIX_SEM_
+#define _USE_POSIX_SEM_ @POSIX_SEM@
+#endif

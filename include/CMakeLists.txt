@@ -1,14 +1,4 @@
-set( CMAKE_INCLUDE_CURRENT_DIR ON )
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake )
-
-
-target_include_directories( heapalloc
-                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ) 
-
-message( STATUS "Including directory ${CMAKE_CURRENT_SOURCE_DIR}" )
-
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR} )
-
 
 
 set( IPCINCDIR ${CMAKE_INSTALL_PREFIX}/include )
