@@ -48,22 +48,29 @@ int main()
    
     //call me paranoid, but, wanna make sure alignas works
     //vs. old school struct padding.
+    /**
+     * NOTE: updated the check fields at bottom on 27 Aug, realized
+     * that we inadvertantly set them to check for 64B cache-line 
+     * alignment which fails on Apple M1 and IBM Power systems with
+     * non-64B cache lines, fixed. 
+     */
     std::uintptr_t diff( 0 );
     if( (diff = convert( &ch_ptr->meta, buffer      ) ) != 0 )  
     {
         std::cout << "offset should be (0), but it is (" << diff << ")\n";
         return( EXIT_FAILURE );
     }
-    if( (diff = convert( &ch_ptr->ctrl_all, buffer  ) ) != 256 ) 
+    if( (diff = convert( &ch_ptr->ctrl_all, buffer  ) ) != (L1D_CACHE_LINE_SIZE * 4) ) 
     {
-        std::cout << "offset should be (64), but it is (" << diff << ")\n";
+        std::cout << "offset should be (256), but it is (" << diff << ")\n";
         return( EXIT_FAILURE );
     }
-    if( (diff = convert( &ch_ptr->ctrl_spsc, buffer ) ) != 384 ) 
+    if( (diff = convert( &ch_ptr->ctrl_spsc, buffer ) ) != (L1D_CACHE_LINE_SIZE*6) ) 
     {
-        std::cout << "offset should be (192), but it is (" << diff << ")\n";
+        std::cout << "offset should be (384), but it is (" << diff << ")\n";
         return( EXIT_FAILURE );
     }
+    //this one should hit block boundary, otherwise we've broken something
     if( (diff = convert( &ch_ptr->spsc_q, buffer    ) ) != 4096 ) 
     {
         std::cout << "offset should be (4096), but it is (" << diff << ")\n";
