@@ -13,6 +13,7 @@ list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 include(CheckGitDep)
 
 include(CheckCXXCompilerFlag)
+include(ProjectInclude)
 
 CHECK_CXX_COMPILER_FLAG("-faligned-new" HAS_ALIGNED_NEW)
 if (HAS_ALIGNED_NEW)
@@ -26,7 +27,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -mtune=native")
 # Set a variable so that we can detect debug mode in cpp files
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
 
-
+subproject_enable_includes()
 ## 
 # helpers
 ##
@@ -75,6 +76,8 @@ include_directories ( ${PROJECT_BINARY_DIR}/include )
 
 add_subdirectory( include )
 add_subdirectory( src )
+
+subproject_finalize_includes()
 
 mark_as_advanced( BUILD_TESTS )
 set( BUILD_TESTS true CACHE BOOL "Tests build target available if true" )

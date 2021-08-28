@@ -2,10 +2,11 @@ project( HeapAlloc )
 cmake_minimum_required(VERSION 3.10)
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 include( CheckSTD )
-
+include( ProjectInclude )
+subproject_enable_includes()
 add_subdirectory( src )
 add_subdirectory( include )
-
+subproject_finalize_includes()
 ##
 # enable unit tests
 ##
