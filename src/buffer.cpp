@@ -55,7 +55,6 @@ ipc::buffer::shutdown_handler( int signum )
                 ipc::buffer::gb_err.buffer->allocated_size,
                 false,
                 true );
-    std::exit( EXIT_FAILURE );
 }
 
 ipc::buffer::buffer() : buffer_base()
