@@ -2,10 +2,14 @@ list( APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake )
 set( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 set( TESTAPPS #list apps
-        genericnode
-        zeronode
+        allocateBuffer
+        allocationTest
+        allocationMultiChannelOpen
+        allocationMultiChannelNoChannel
         bignode
-        translateaddress
+        calculateOffset
+        channelinfo_spacing
+        genericnode
         locked_node_insert
         locked_node_remove
         locked_node_find
@@ -15,15 +19,12 @@ set( TESTAPPS #list apps
         #lf_mn_node_insert_remove_twothreads
         lf_spsc_node_insert_remove
         lf_spsc_node_insert_remove_twothreads
-        calculateOffset
-        allocateBuffer
-        allocationTest
-        allocationMultiChannelOpen
-        allocationMultiChannelNoChannel
-        channelinfo_spacing
+        multiChannelIteration
         spsc_two_threads
         spsc_two_processes
         spsc_two_processes_multi_channel
+        translateaddress
+        zeronode
         #allocationMultithreaded
         #allocationMultiprocess
         #nodeCounter

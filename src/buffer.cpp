@@ -334,7 +334,7 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
     
         switch( channel->meta.type )
         {
-            case( ipc::mpmc ):
+            case( ipc::mpmc_record ):
             {
                 //set up dummy node for LF queue 
                 auto dummy_info_multiple  = 
@@ -356,7 +356,7 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
                                                    &data->buffer->data );
             }
             break;
-            case( ipc::spsc ):
+            case( ipc::spsc_record ):
             {
                 ipc::buffer::spsc_lock_free::init( channel );
             }
@@ -413,16 +413,61 @@ ipc::channel_id_t
 ipc::buffer::add_spsc_lf_record_channel(   ipc::thread_local_data *data, 
                                            const channel_id_t channel_id )
 {
-    return( ipc::buffer::add_channel( data, channel_id, ipc::spsc ) );
+    return( ipc::buffer::add_channel( data, channel_id, ipc::spsc_record ) );
 }
 
 //ipc::channel_id_t
 //ipc::buffer::add_mn_lf_channel(   ipc::thread_local_data *data, 
 //                            const channel_id_t channel_id )
 //{
-//    return( ipc::buffer::add_channel( data, channel_id, ipc::mpmc ) );
+//    return( ipc::buffer::add_channel( data, channel_id, ipc::mpmc_record ) );
 //}
 //
+    
+ipc::channel_map_t
+ipc::buffer::get_channel_list( ipc::thread_local_data *data )
+{
+    auto channel_map_output = ipc::make_channel_map();
+    /** we don't want list changed out from under us **/
+    auto sem = data->index_semaphore;
+    if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
+    {
+        ipc::buffer::gb_err.err_msg << 
+            "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
+             " with sem value: " << sem;
+        raise( SIGUSR1 );
+    }
+    //populate channel map 
+    ipc::ptr_offset_t current_offset = ipc::invalid_ptr_offset;
+    do
+    {
+        current_offset = 
+        ipc::buffer::channel_list_t::get_next( current_offset, 
+                                               &data->buffer->data,
+                                               &data->buffer->channel_list );
+        if( current_offset != ipc::invalid_ptr_offset )
+        {
+            auto *channel_index_struct = (ipc::channel_index_t*)
+                                                translate_block( &data->buffer->data,
+                                                                 current_offset );
+            auto &ele = (**channel_index_struct);
+            channel_map_output->insert( 
+                std::make_pair( ele.meta.channel_id, 
+                                ele.meta.type )
+            );
+        }                                                                 
+    }while( current_offset != ipc::invalid_ptr_offset );
+
+    /** release sem **/
+    if( ipc::sem::post( sem ) == ipc::sem::uni_error )
+    {
+        ipc::buffer::gb_err.err_msg << 
+            "Failed to post semaphore, exiting given we can't recover from this " << 
+                "sem val(" << sem << ") @ line " << __LINE__;
+        raise( SIGUSR1 );
+    }
+    return( channel_map_output );
+}
 
 ipc::channel_id_t
 ipc::buffer::find_channel( ipc::thread_local_data *data,
@@ -916,7 +961,7 @@ ipc::buffer::send_record( ipc::thread_local_data *tls_data,
     ipc::tx_code ret_code = tx_error;
     switch( channel_info->meta.type )
     {
-        case( ipc::mpmc ):
+        case( ipc::mpmc_record):
         {
             //allocate a record object, doesn't matter if it's local or global
             auto *mem_for_record_node = 
@@ -941,7 +986,7 @@ ipc::buffer::send_record( ipc::thread_local_data *tls_data,
                                                    &tls_data->buffer->data ); 
         }
         break;
-        case( ipc::spsc ):
+        case( ipc::spsc_record ):
         {
             /**
              * the mpmc one we have to make a lock-free node, but for this
@@ -980,7 +1025,7 @@ ipc::buffer::receive_record( ipc::thread_local_data *tls_data,
     
     switch( channel_info->meta.type )
     {
-        case( ipc::mpmc ):
+        case( ipc::mpmc_record ):
         {
             //we'll receive data here, will need to unpact from queue node
             ipc::record_index_t *ptr = nullptr;
@@ -1004,7 +1049,7 @@ ipc::buffer::receive_record( ipc::thread_local_data *tls_data,
             ipc::buffer::free_record( tls_data, ptr );
         }
         break;
-        case( ipc::spsc ):
+        case( ipc::spsc_record ):
         {
             /**
              * spsc ringbuffer returns pointer directly, no need

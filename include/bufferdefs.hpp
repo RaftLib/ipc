@@ -22,6 +22,11 @@
 #include <cstdint>
 #include <limits>
 #include <atomic>
+#include <map>
+#include <memory>
+#include <type_traits>
+#include <array>
+#include <string>
 
 #include <sys/types.h>
 
@@ -80,9 +85,24 @@ namespace ipc
     
     enum channel_type : int
     {
-        spsc = 0,
-        mpmc = 1
+        spsc_record,
+        mpmc_record,
+        atomic,
+        spsc_data,
+        mpmc_data,
+        number_channel_types
+
     };
+
+    constexpr static std::array< char[30], ipc::number_channel_types > 
+        channel_type_names = 
+       {{
+             "spsc_record",
+             "mpmc_record",
+             "atomic",
+             "spsc_data",
+             "mpmc_data",
+        }};
 
     using credit_t = std::atomic< std::uint32_t >;
     using ctrl_ptroffset_t = std::atomic< ipc::ptr_offset_t >;
@@ -139,6 +159,10 @@ namespace ipc
         tx_error   = -1,
         tx_success = 0
     };
+
+
+    using channel_map_t = std::shared_ptr< std::map< channel_id_t, channel_type > >;
+    inline static auto make_channel_map(){ return( std::make_shared< std::map< channel_id_t, channel_type > >() ); }
 } /** end namespace ipc **/
 
 #endif /* END _BUFFERDEFS_HPP_ */

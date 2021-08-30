@@ -237,6 +237,40 @@ public:
         return( ipc::ptr_not_found );
     }
 
+    /**
+     * get_next - returns ipc::invalid_ptr_offset if no more nodes, 
+     * keep calling function till that is returned. Every time you call
+     * it to get the next node, the offset should be the previous one 
+     * returned.
+     * @param offset - initial call should be ipc::invalid_ptr_offset, 
+     * when no more nodes, ipc::invalid_ptr_offset returned.
+     * @param data_buffer_base - base of data buffer
+     * @param ll - linked list object.
+     */
+    static ipc::ptr_offset_t get_next( ipc::ptr_offset_t    offset,
+                                       void                 *data_buffer_base,
+                                       self_t               *ll )
+    {
+        if( size( ll ) == 0 )
+        {
+            return( ipc::invalid_ptr_offset );
+        }
+        
+        ipc::ptr_offset_t output = offset;
+        if( output == ipc::invalid_ptr_offset )
+        {
+            //initial node condition, after this, it's node.next
+            return( ll->start );
+        }
+        //else valid entry
+        auto *curr_node = (NODE_TYPE*)
+            TRANSLATE::translate_block(   data_buffer_base,
+                                          output );
+        output = curr_node->next.load( std::memory_order_relaxed ) ;
+        
+        return( output );
+    }
+
    /**
     * find - find the node that is within the linked list. If the node that
     * is given is found within the linked list (using the compare function)

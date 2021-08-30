@@ -37,7 +37,7 @@ struct alignas( L1D_CACHE_LINE_SIZE ) ch_meta_all
    
     ipc::refcnt_t       ref_count                         = 0; 
     
-    ipc::channel_type   type                              = ipc::spsc; 
+    ipc::channel_type   type                              = ipc::spsc_record;
     ipc::sem::sem_key_t channel_semaphore                 = { 0 };
     /**
      * FIXME - consider making these a union or template dep.

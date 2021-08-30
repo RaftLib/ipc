@@ -318,6 +318,10 @@ public:
         return( 0 );
     }
 
+    static
+    ipc::channel_map_t
+    get_channel_list( ipc::thread_local_data *tls );
+    
     /**
      * find_channel - returns the information about the target 
      * channel, specifically you give as parameters the TLS and 
