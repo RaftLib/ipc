@@ -29,7 +29,7 @@
 #include <signal.h>
 
 #include "sem.hpp"
-#include "buffer.hpp"
+#include <buffer>
 
 #include <errno.h>
 #include "allocation_metadata.hpp"

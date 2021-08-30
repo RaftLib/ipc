@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <cstdlib>
-#include "buffer.hpp"
+#include <buffer>
 #include <iostream>
 #include <iomanip>
 

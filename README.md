@@ -19,7 +19,7 @@ allocation and communication mechanisms.
 ## Simple example
 ```cpp
 /** only include file you should need **/
-#include "buffer.hpp"
+#include <buffer>
 
 /**
  * shared memory buffer allocated and returned as a pointer,

@@ -23,7 +23,7 @@
 #include <thread>
 #include <atomic>
 
-#include "buffer.hpp"
+#include <buffer>
 
 
 using lf_queue_t = 

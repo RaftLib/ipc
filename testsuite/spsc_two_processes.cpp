@@ -25,7 +25,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "buffer.hpp"
+#include <buffer>
 
 
 using lf_queue_t = 
