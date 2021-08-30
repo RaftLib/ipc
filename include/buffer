@@ -318,6 +318,12 @@ public:
         return( 0 );
     }
 
+
+    static
+    bool
+    has_active_channels( ipc::thread_local_data *tls );
+
+
     static
     ipc::channel_map_t
     get_channel_list( ipc::thread_local_data *tls );

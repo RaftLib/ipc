@@ -10,6 +10,7 @@ set( TESTAPPS #list apps
         calculateOffset
         channelinfo_spacing
         genericnode
+        haschannels
         locked_node_insert
         locked_node_remove
         locked_node_find

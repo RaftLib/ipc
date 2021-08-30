@@ -424,6 +424,13 @@ ipc::buffer::add_spsc_lf_record_channel(   ipc::thread_local_data *data,
 //}
 //
     
+
+bool
+ipc::buffer::has_active_channels( ipc::thread_local_data *tls )
+{
+    return( ipc::buffer::channel_list_t::size( &tls->buffer->channel_list ) != 0 );  
+}
+    
 ipc::channel_map_t
 ipc::buffer::get_channel_list( ipc::thread_local_data *data )
 {
