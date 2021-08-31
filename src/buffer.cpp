@@ -57,6 +57,19 @@ ipc::buffer::shutdown_handler( int signum )
                 true );
 }
 
+void ipc::buffer::register_signal_handlers()
+{
+    struct sigaction action;
+    sigemptyset( &action.sa_mask );
+    action.sa_flags = 0;
+    action.sa_handler = ipc::buffer::shutdown_handler;
+    sigaction (SIGUSR1, &action, nullptr );
+    sigaction (SIGSEGV, &action, nullptr );
+    sigaction (SIGKILL, &action, nullptr );
+    sigaction (SIGINT,  &action, nullptr );
+}
+
+
 ipc::buffer::buffer() : buffer_base()
 {
     //nothing to see here
@@ -67,14 +80,6 @@ ipc::buffer::initialize( const std::string shm_handle )
 {
     //stupid sanity check
     assert( shm_handle.length() > 0 );
-    struct sigaction action;
-    sigemptyset( &action.sa_mask );
-    action.sa_flags = 0;
-    action.sa_handler = ipc::buffer::shutdown_handler;
-    sigaction (SIGUSR1, &action, nullptr );
-    sigaction (SIGSEGV, &action, nullptr );
-    sigaction (SIGKILL, &action, nullptr );
-    sigaction (SIGINT,  &action, nullptr );
 
     ipc::buffer::gb_err.shm_handle = shm_handle;
 
@@ -110,7 +115,7 @@ ipc::buffer::initialize( const std::string shm_handle )
     catch( bad_shm_alloc &ex )
     {
         ipc::buffer::gb_err.err_msg << ex.what();
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     
     //we're here, then we're the first ones, lots to do.
@@ -136,13 +141,13 @@ ipc::buffer::initialize( const std::string shm_handle )
         if( sem_id == ipc::sem::sem_error )
         {
             ipc::buffer::gb_err.err_msg << "Failed to open semaphore, exiting!!" ;
-            raise( SIGUSR1 );
+            shutdown_handler( 0 );
         }
 
         if( ipc::sem::main_init( sem_id ) == -1 )
         {
             ipc::buffer::gb_err.err_msg << "failed to init index semaphore, (" << name << "), exiting";
-            raise( SIGUSR1 );
+            shutdown_handler( 0 );
         }
         /**
          * changed from std::pair to returning the active/open
@@ -283,7 +288,7 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
              " with sem value: " << sem;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     //returns block that is modulo block_size
     channel_start  = 
@@ -395,7 +400,7 @@ POST:
         ipc::buffer::gb_err.err_msg << 
             "Failed to post semaphore, exiting given we can't recover from this " << 
                 "sem val(" << sem << ") @ line " << __LINE__;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     
     if( channel != nullptr /** only case if we couldn't allocate mem **/ )
@@ -441,7 +446,7 @@ ipc::buffer::get_channel_list( ipc::thread_local_data *data )
         ipc::buffer::gb_err.err_msg << 
             "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
              " with sem value: " << sem;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     //populate channel map 
     ipc::ptr_offset_t current_offset = ipc::invalid_ptr_offset;
@@ -470,7 +475,7 @@ ipc::buffer::get_channel_list( ipc::thread_local_data *data )
         ipc::buffer::gb_err.err_msg << 
             "Failed to post semaphore, exiting given we can't recover from this " << 
                 "sem val(" << sem << ") @ line " << __LINE__;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     return( channel_map_output );
 }
@@ -488,7 +493,7 @@ ipc::buffer::find_channel( ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
              " with sem value: " << sem;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
                                       
     output = ipc::buffer::find_channel_buffer_offset( data, channel_id, channel );
@@ -500,7 +505,7 @@ ipc::buffer::find_channel( ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to post semaphore, exiting given we can't recover from this " << 
                 "sem val(" << sem << ") @ line " << __LINE__;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     return( output );
 }
@@ -516,7 +521,7 @@ ipc::buffer::remove_channel( ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
              " with sem value: " << sem;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     /**
      * get offset to the outter index structure, this is w.r.t. to blocks.
@@ -545,7 +550,7 @@ ipc::buffer::remove_channel( ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to post semaphore, exiting given we can't recover from this " << 
                 "sem val(" << sem << ") @ line " << __LINE__;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
 
     return( channel_offset >= ipc::valid_offset );
@@ -590,10 +595,10 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
         auto sem = tls->index_semaphore;
         if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
         {
-        ipc::buffer::gb_err.err_msg << 
-            "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
-             " with sem value: " << sem;
-            raise( SIGUSR1 );
+            ipc::buffer::gb_err.err_msg << 
+                "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
+                 " with sem value: " << sem;
+            shutdown_handler( 0 );
         }
 
         --(ch_ptr->meta.ref_count);
@@ -604,7 +609,7 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
             ipc::buffer::gb_err.err_msg << 
                 "Failed to post semaphore, exiting given we can't recover from this " << 
                     "sem val(" << sem << ") @ line " << __LINE__;
-            raise( SIGUSR1 );
+            shutdown_handler( 0 );
         }
 
         /**
@@ -786,7 +791,7 @@ ipc::buffer::global_buffer_allocate( ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
              " with sem value: " << sem;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
 
     if( blocks_needed <= ipc::meta_info::heap_t::get_blocks_avail( &data->buffer->heap  ) )
@@ -807,7 +812,7 @@ ipc::buffer::global_buffer_allocate( ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to post semaphore, exiting given we can't recover from this " << 
                 "sem val(" << sem << ") @ line " << __LINE__;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     return( output /** null or valid pointer **/);
 }
@@ -892,7 +897,7 @@ ipc::buffer::_free(   ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
              " with sem value: " << sem;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     
     /**
@@ -913,7 +918,7 @@ ipc::buffer::_free(   ipc::thread_local_data *data,
         ipc::buffer::gb_err.err_msg << 
             "Failed to post semaphore, exiting given we can't recover from this " << 
                 "sem val(" << sem << ") @ line " << __LINE__;
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
 
 }
@@ -1098,7 +1103,7 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     if( ptr->index_semaphore == ipc::sem::sem_error )
     {
         ipc::buffer::gb_err.err_msg << "Failed to open index semaphore!!";
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
 
     ptr->allocate_semaphore = ipc::sem::open( 
@@ -1109,19 +1114,19 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     if( ptr->allocate_semaphore == ipc::sem::sem_error )
     {
         ipc::buffer::gb_err.err_msg << "Failed to open allocate semaphore!!";
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
 
     //call subinit function
     if( ipc::sem::sub_init( ptr->allocate_semaphore ) == -1 )
     {
         ipc::buffer::gb_err.err_msg << "failed to initialize semaphore"; 
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
     if( ipc::sem::sub_init( ptr->index_semaphore ) == -1 )
     {
         ipc::buffer::gb_err.err_msg << "failed to initialize index semaphore"; 
-        raise( SIGUSR1 );
+        shutdown_handler( 0 );
     }
 
     // tls is now allocated (and semaphores open), now register this thread in the index
