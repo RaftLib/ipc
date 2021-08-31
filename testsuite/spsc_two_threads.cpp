@@ -103,6 +103,7 @@ void consumer(  const int count,
 
 int main()
 {
+    ipc::buffer::register_signal_handlers();
     auto *buffer = ipc::buffer::initialize( "thehandle"  );
 
     auto channel_id = 1;

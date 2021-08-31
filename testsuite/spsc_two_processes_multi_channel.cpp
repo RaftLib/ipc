@@ -130,7 +130,7 @@ void consumer(  const int count,
 
 int main()
 {
-
+    ipc::buffer::register_signal_handlers();
     const auto channel_id_a   = 1;
     const auto channel_id_b   = 2;
 
