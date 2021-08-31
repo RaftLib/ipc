@@ -162,7 +162,9 @@ namespace ipc
 
 
     using channel_map_t = std::shared_ptr< std::map< channel_id_t, channel_type > >;
-    inline static auto make_channel_map(){ return( std::make_shared< std::map< channel_id_t, channel_type > >() ); }
+    inline static auto make_channel_map(){ 
+        return( std::make_shared< std::map< channel_id_t, channel_type > >() ); 
+    }
 } /** end namespace ipc **/
 
 #endif /* END _BUFFERDEFS_HPP_ */

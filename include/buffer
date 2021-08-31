@@ -53,10 +53,6 @@ class buffer :
 private:
     static global_err_t gb_err;
 
-    /**
-     * err handling func
-     */
-    static void shutdown_handler( int signum );
 
     
     /** 
@@ -143,7 +139,22 @@ private:
 public:
     buffer();
     ~buffer() = default;
+    
+    /**
+     * err handling call-back for the buffer, 
+     * 1) closes semaphores
+     * 2) closes and unlinks IPC buffer (danger here)
+     * 3) prints any and all error messages, also prints value of perror
+     */
+    static void shutdown_handler( int signum );
 
+    /**
+     * register_signal_handlers - use for standalone clients that don't
+     * want to dealwith registering their own handlers.
+     */
+    static void register_signal_handlers();
+
+    
 
     /**
      * allocate - allocate nbytes of data from the buffer, if not enough 

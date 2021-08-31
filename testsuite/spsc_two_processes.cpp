@@ -99,7 +99,7 @@ void consumer(  const int count,
 
 int main( int argc, char **argv )
 {
-
+    ipc::buffer::register_signal_handlers();
 
     const auto channel_id   = 1;
 
