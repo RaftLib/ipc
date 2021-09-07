@@ -728,20 +728,18 @@ ipc::ptr_offset_t
 ipc::buffer::find_channel_block( ipc::thread_local_data *data,
                                   const channel_id_t      channel_id )
 {
-    auto *temp_node = 
-    new ipc::channel_index_t( channel_id            /** node_id **/,
-                              ipc::nodebase::normal /** node type **/,
-                              channel_id );
     assert( data        != nullptr );
+    ipc::channel_index_t temp_node( channel_id            /** node_id **/,
+                                    ipc::nodebase::normal /** node type **/,
+                                    channel_id );
     //initialize to null effectively
 
     ipc::ptr_offset_t found_node_offset( ipc::ptr_not_found );
     
     found_node_offset = 
         ipc::buffer::channel_list_t::find( &(data->buffer->data), 
-                                           *temp_node, 
+                                           temp_node, 
                                            &(data->buffer->channel_list) );
-    delete( temp_node );
     return( found_node_offset );
 }
 
