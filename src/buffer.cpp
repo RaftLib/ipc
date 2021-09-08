@@ -93,14 +93,11 @@ ipc::buffer::initialize( const std::string shm_handle )
     const auto size_we_need         = buffer_size_nbytes + meta_size_bytes;
 
     void *memory( nullptr );
-    try
-    {
-        memory = shm::init( shm_handle, 
+    memory = shm::init( shm_handle, 
                             size_we_need, 
                             false /** don't zero **/, 
                             nullptr /** no placement **/ );
-    }
-    catch( shm_already_exists &ex )
+    if( memory == (void*)-1)
     {
         auto *output( shm::eopen< ipc::buffer >( shm_handle ) );
         while( output->cookie.load( std::memory_order_seq_cst)
@@ -111,11 +108,6 @@ ipc::buffer::initialize( const std::string shm_handle )
         }
         ipc::buffer::gb_err.buffer = output;
         return( output );
-    }
-    catch( bad_shm_alloc &ex )
-    {
-        ipc::buffer::gb_err.err_msg << ex.what();
-        shutdown_handler( 0 );
     }
     
     //we're here, then we're the first ones, lots to do.
