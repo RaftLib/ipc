@@ -40,7 +40,7 @@ void producer(  const int count,
 {
     const auto thread_id    = getpid();
     auto *tls_producer      = ipc::buffer::get_tls_structure( buffer, thread_id );
-    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, channel_id ) == ipc::channel_err )
+    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, channel_id, ipc::producer ) == ipc::channel_err )
     {
         return;
     }
@@ -67,7 +67,7 @@ void consumer(  const int count,
 {
     const auto thread_id    = getpid();
     auto *tls_consumer      = ipc::buffer::get_tls_structure( buffer, thread_id );
-    if( ipc::buffer::add_spsc_lf_record_channel( tls_consumer, channel_id ) == ipc::channel_err )
+    if( ipc::buffer::add_spsc_lf_record_channel( tls_consumer, channel_id, ipc::consumer ) == ipc::channel_err )
     {
         return;
     }

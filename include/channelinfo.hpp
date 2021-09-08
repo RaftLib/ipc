@@ -65,7 +65,8 @@ std::ostream& operator << ( std::ostream &s, const channel_info &info )
 {
     s << "{\n";
     s << "  channel_id: " << info.meta.channel_id << ",\n";
-    s << "  ref_count:  " << info.meta.ref_count << ",\n";
+    s << "  ref_count_prod:  " << info.meta.ref_count_prod << ",\n";
+    s << "  ref_count_cons:  " << info.meta.ref_count_cons << ",\n";
     s << "  data_head: " <<  info.ctrl_all.data_head << ",\n";
     s << "  data_tail: " <<  info.ctrl_all.data_tail << ",\n";
     s << "}";

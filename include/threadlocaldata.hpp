@@ -36,6 +36,16 @@ struct allocate_metadata;
 
 struct local_allocation_info
 {
+    local_allocation_info() = default;
+
+    local_allocation_info( const ipc::direction_t d ) : dir( d ){}
+    
+    local_allocation_info( const local_allocation_info &other ) : 
+        local_allocation( other.local_allocation ),
+        blocks_available( other.blocks_available ),
+        dir( other.dir ){}
+    
+
     /** 
      * this is your free space that you're pushing into the 
      * FIFO. This region is lock-free. It is with respect
@@ -50,7 +60,8 @@ struct local_allocation_info
      * that has already been allocated by this thread. If
      * This value is zero, more space must be allocated. 
      */
-    std::size_t     blocks_available  = 0;
+    std::size_t         blocks_available  = 0;
+    ipc::direction_t    dir               = ipc::dir_not_set;
 };
 
 struct thread_local_data
