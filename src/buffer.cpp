@@ -256,9 +256,10 @@ ipc::buffer::destruct( ipc::buffer *b,
 }
 
 ipc::channel_id_t
-ipc::buffer::add_channel( ipc::thread_local_data *data,
-                          const channel_id_t      channel_id, 
-                          const ipc::channel_type type )
+ipc::buffer::add_channel( ipc::thread_local_data    *data,
+                          const channel_id_t        channel_id, 
+                          const ipc::channel_type   type,
+                          const ipc::direction_t    dir )
 {
     assert( data != nullptr );
     const auto size_to_allocate( sizeof( ipc::channel_index_t ) );
@@ -293,6 +294,7 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
     //returns block that is modulo block_size
     channel_start  = 
         ipc::buffer::find_channel_buffer_offset( data, channel_id, &channel );
+    
     if( channel_start < ipc::valid_offset )
     {
         // Create new node -- will have to acquire allocation semaphore
@@ -386,7 +388,25 @@ ipc::buffer::add_channel( ipc::thread_local_data *data,
      * else, find_channel_buffer_offset function has set channel ptr to something valid
      * and the output contains the pointer to channel_info. 
      */
-    channel->meta.ref_count++ /** atomic inc **/;
+    //two directions on the channel, producer or consumer
+    switch( dir )
+    {
+        case( ipc::producer ):
+        {
+            channel->meta.ref_count_prod++ /** atomic inc **/;
+        }
+        break;
+        case( ipc::consumer ):
+        {
+            channel->meta.ref_count_cons++ /** atomic inc **/;
+        }
+        break;
+        default:
+        {
+            //shouldn't be here
+            assert( false );
+        }
+    }
 
 POST:
     // Release semaphore
@@ -403,10 +423,14 @@ POST:
         shutdown_handler( 0 );
     }
     
-    if( channel != nullptr /** only case if we couldn't allocate mem **/ )
+    if( channel != nullptr /** only case if we couldn't allocate mem for channel **/ )
     {
         /** insert zero count allocation struct into local calling TLS **/
-        data->channel_local_allocation.insert( std::make_pair( channel_id, ipc::local_allocation_info() ) ); 
+        data->channel_local_allocation.insert( 
+            std::make_pair( 
+                channel_id, ipc::local_allocation_info( dir ) 
+            ) 
+        ); 
         /** insert channel structure into calling TLS **/
         data->channel_map.insert( std::make_pair( channel_id, channel ) );
     }
@@ -414,10 +438,11 @@ POST:
 }
 
 ipc::channel_id_t
-ipc::buffer::add_spsc_lf_record_channel(   ipc::thread_local_data *data, 
-                                           const channel_id_t channel_id )
+ipc::buffer::add_spsc_lf_record_channel(   ipc::thread_local_data   *data, 
+                                           const channel_id_t       channel_id,
+                                           ipc::direction_t         dir )
 {
-    return( ipc::buffer::add_channel( data, channel_id, ipc::spsc_record ) );
+    return( ipc::buffer::add_channel( data, channel_id, ipc::spsc_record, dir ) );
 }
 
 //ipc::channel_id_t
@@ -433,6 +458,18 @@ bool
 ipc::buffer::has_active_channels( ipc::thread_local_data *tls )
 {
     return( ipc::buffer::channel_list_t::size( &tls->buffer->channel_list ) != 0 );  
+}
+    
+bool
+ipc::buffer::channel_has_producers( ipc::thread_local_data *tls, const ipc::channel_id_t channel )
+{
+    const auto found = tls->channel_map.find( channel );
+    if( found == tls->channel_map.cend() )
+    {
+        return( false );
+    }
+    //else
+    return( (*(*found).second).meta.ref_count_prod > 0 );
 }
     
 ipc::channel_map_t
@@ -574,6 +611,74 @@ ipc::buffer::free_channel_memory( ipc::thread_local_data *data, ipc::local_alloc
 }
 
 void
+ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t channel )
+{
+    //get ptr for channel
+    ipc::channel_info *ch_ptr = tls->channel_map[ channel ];
+    //get rid of our local data allocation, return to buffer
+    auto &th_local_allocation = tls->channel_local_allocation[ channel ]; 
+
+    ipc::buffer::free_channel_memory( tls, th_local_allocation );
+    /**
+     * decrement refcount, if zero then free channel allocation, 
+     * must get semaphore first.
+     */
+
+    /**
+     * Acquire semaphore, must go after allocate otherwise we have 
+     * nested semaphore acquire and deadlock.
+     */
+    auto sem = tls->index_semaphore;
+    if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
+    {
+        ipc::buffer::gb_err.err_msg << 
+            "Failed to wait, plz debug at line (" << __LINE__ << ")" << 
+             " with sem value: " << sem;
+        shutdown_handler( 0 );
+    }
+    
+    //two directions on the channel, producer or consumer
+    switch( th_local_allocation.dir )
+    {
+        case( ipc::producer ):
+        {
+            //this part needs index sem
+            --(ch_ptr->meta.ref_count_prod);
+        }
+        break;
+        case( ipc::consumer ):
+        {
+            //this part needs index sem
+            --(ch_ptr->meta.ref_count_cons);
+        }
+        break;
+        default:
+        {
+            //shouldn't be here
+            assert( false );
+        }
+    }
+
+
+    /** release sem **/
+    if( ipc::sem::post( sem ) == ipc::sem::uni_error )
+    {
+        ipc::buffer::gb_err.err_msg << 
+            "Failed to post semaphore, exiting given we can't recover from this " << 
+                "sem val(" << sem << ") @ line " << __LINE__;
+        shutdown_handler( 0 );
+    }
+    
+    if( ch_ptr->meta.ref_count_prod == 0 && ch_ptr->meta.ref_count_cons == 0 )
+    {
+        ipc::buffer::remove_channel( tls, channel );
+    }
+    tls->channel_map.erase( channel );
+    tls->channel_local_allocation.erase( channel );
+}
+
+
+void
 ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
 {
     for( auto ch_pair : tls->channel_map )
@@ -581,7 +686,9 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
         //get ptr for channel
         ipc::channel_info *ch_ptr = ch_pair.second;
         //get rid of our local data allocation, return to buffer
-        auto &th_local_allocation = tls->channel_local_allocation[ ch_pair.first ];
+        auto &th_local_allocation = tls->channel_local_allocation[ 
+            ch_pair.first /** channel id **/ ];
+
         ipc::buffer::free_channel_memory( tls, th_local_allocation );
         /**
          * decrement refcount, if zero then free channel allocation, 
@@ -600,8 +707,29 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
                  " with sem value: " << sem;
             shutdown_handler( 0 );
         }
+    
+        //two directions on the channel, producer or consumer
+        switch( th_local_allocation.dir )
+        {
+            case( ipc::producer ):
+            {
+                //this part needs index sem
+                --(ch_ptr->meta.ref_count_prod);
+            }
+            break;
+            case( ipc::consumer ):
+            {
+                //this part needs index sem
+                --(ch_ptr->meta.ref_count_cons);
+            }
+            break;
+            default:
+            {
+                //shouldn't be here
+                assert( false );
+            }
+        }
 
-        --(ch_ptr->meta.ref_count);
 
         /** release sem **/
         if( ipc::sem::post( sem ) == ipc::sem::uni_error )
@@ -611,14 +739,8 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
                     "sem val(" << sem << ") @ line " << __LINE__;
             shutdown_handler( 0 );
         }
-
-        /**
-         * ref_count was a bug, till we ran into an atomic alignment error 
-         * on A72 NXP platforms, likely an alignment issue, will see if we 
-         * can fix by adjusting alignment. Could have been caused by spurious
-         * pack(1) ifdef in the control structure. - jcb
-         */
-        if( ch_ptr->meta.ref_count == 0 )
+        
+        if( ch_ptr->meta.ref_count_prod == 0 && ch_ptr->meta.ref_count_cons == 0 )
         {
             ipc::buffer::remove_channel( tls, ch_pair.first );
         }

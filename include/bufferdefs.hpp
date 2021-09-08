@@ -160,6 +160,12 @@ namespace ipc
         tx_success = 0
     };
 
+    enum direction_t : std::int8_t
+    {
+        dir_not_set,
+        producer,
+        consumer
+    };
 
     using channel_map_t = std::shared_ptr< std::map< channel_id_t, channel_type > >;
     inline static auto make_channel_map(){ 

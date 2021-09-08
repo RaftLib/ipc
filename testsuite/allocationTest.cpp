@@ -27,7 +27,7 @@ int main()
 
     //we're allocating one channel with it's meta data so should be exactly
     //2 blocks 
-    const auto ret_code = ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id );
+    const auto ret_code = ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id, ipc::producer );
     
     /** only do this for debugging **/
     std::cout << 

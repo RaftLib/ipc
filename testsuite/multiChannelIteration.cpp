@@ -20,8 +20,8 @@ int main()
 
     auto *fake_tls = ipc::buffer::get_tls_structure( buffer, thread_id );
    
-    ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id );
-    ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id + 1 );
+    ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id, ipc::producer );
+    ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id + 1, ipc::producer );
         
     auto channel_list = ipc::buffer::get_channel_list( fake_tls );
     for( auto &pair : (*channel_list) )

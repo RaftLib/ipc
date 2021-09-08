@@ -129,12 +129,14 @@ private:
                        const ipc::ptr_offset_t block_base,
                        const std::size_t blocks);
 
-    static void free_channel_memory( ipc::thread_local_data *data, ipc::local_allocation_info &info );
+    static void free_channel_memory( ipc::thread_local_data *data, 
+                                     ipc::local_allocation_info &info );
     
     static
-    channel_id_t add_channel( ipc::thread_local_data *tls, 
-                              const channel_id_t channel_id,
-                              const ipc::channel_type  channel_type );
+    channel_id_t add_channel( ipc::thread_local_data    *tls, 
+                              const channel_id_t        channel_id,
+                              const ipc::channel_type   channel_type,
+                              const ipc::direction_t    dir );
                                         
 public:
     buffer();
@@ -310,25 +312,13 @@ public:
      */
     static
     channel_id_t add_spsc_lf_record_channel( ipc::thread_local_data *tls, 
-                                             const channel_id_t channel_id );
+                                             const channel_id_t channel_id,
+                                             ipc::direction_t   dir );
     
 
-    /**
-     * add_spsc_lf_data_channel - unlike the record channel, this channel
-     * for a specific single type/size for both the producer consumer 
-     * side. 
-     */
-    template < class T >
     static
-    channel_id_t    add_spsc_lf_data_channel( ipc::thread_local_data *tls,
-                                              const channel_id_t channel_id )
-    {
-        UNUSED( tls );
-        UNUSED( channel_id );
-        //do some stuff
-        return( 0 );
-    }
-
+    bool
+    channel_has_producers( ipc::thread_local_data *tls, const ipc::channel_id_t channel );
 
     static
     bool
@@ -368,6 +358,19 @@ public:
      */
     static
     void           unlink_channels( ipc::thread_local_data *tls );
+
+
+    /**
+     * unlink_channel - remove a specific channel from the caller, removes
+     * the channel specific info from teh calling TLS, releases any pre-allocated
+     * blocks to the buffer for re-distribution, and if the link count is 
+     * zero (as in nobody is subscribed to this channel, it will remove the 
+     * channel, which is harmless given there is by definition nobody waiting
+     * on it and they must call it again using one of the add_xx_channel 
+     * methods. 
+     */
+    static
+    void unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t channel );
 
     /**
      * IMPORTANT, KEEP LAST
