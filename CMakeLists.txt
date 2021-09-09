@@ -10,6 +10,10 @@ set( C_STANDARD ON )
 
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
+## for shm module
+set( CPP_EXCEPTIONS 0 )
+add_definitions( "-DUSE_CPP_EXCEPTIONS=0" )
+
 include(CheckGitDep)
 
 include(CheckCXXCompilerFlag)
