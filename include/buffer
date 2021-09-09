@@ -314,7 +314,10 @@ public:
     channel_id_t add_spsc_lf_record_channel( ipc::thread_local_data *tls, 
                                              const channel_id_t channel_id,
                                              ipc::direction_t   dir );
-    
+   
+    static
+    std::size_t get_record_size( ipc::thread_local_data *data, void *ptr );
+
 
     static
     bool

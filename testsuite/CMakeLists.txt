@@ -21,6 +21,7 @@ set( TESTAPPS #list apps
         lf_spsc_node_insert_remove
         lf_spsc_node_insert_remove_twothreads
         multiChannelIteration
+        record_size
         spsc_two_threads
         spsc_two_processes
         spsc_two_processes_multi_channel

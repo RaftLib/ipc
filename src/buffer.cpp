@@ -437,6 +437,22 @@ ipc::buffer::add_spsc_lf_record_channel(   ipc::thread_local_data   *data,
     return( ipc::buffer::add_channel( data, channel_id, ipc::spsc_record, dir ) );
 }
 
+std::size_t
+ipc::buffer::get_record_size( ipc::thread_local_data *data, void *ptr )
+{
+    /** get number of blocks for the metadata **/
+    auto data_block_offset  = calculate_block_offset( &data->buffer->data, ptr );
+    
+    const auto meta_multiple = 
+        ipc::buffer::heap_t::get_block_multiple( sizeof( ipc::allocate_metadata ) );
+   
+    auto meta_offset = data_block_offset - meta_multiple;
+
+    auto *meta_data = (ipc::allocate_metadata*)
+        ipc::buffer::translate_block( &data->buffer->data, meta_offset);
+    return( meta_data->block_count << ipc::block_size_power_two );  
+}
+
 //ipc::channel_id_t
 //ipc::buffer::add_mn_lf_channel(   ipc::thread_local_data *data, 
 //                            const channel_id_t channel_id )
