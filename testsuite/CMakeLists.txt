@@ -24,6 +24,7 @@ set( TESTAPPS #list apps
         record_size
         spsc_two_threads
         spsc_two_processes
+        spsc_two_processes_has_data
         spsc_two_processes_multi_channel
         translateaddress
         zeronode

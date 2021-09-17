@@ -315,6 +315,22 @@ public:
                                              const channel_id_t channel_id,
                                              ipc::direction_t   dir );
    
+    /**
+     * channel_has_data - return if the given CONSUMER channel in channel id, from the TLS block 
+     * data has data on the channel. Returns at least 1  if the channel has data. For
+     * some underlying channel implementations, the exact number is returned, so if required
+     * it can be checked for size and that used for safely finding the current queue size. 
+     * Keep in mind for M:N queue, this is either ephemeral or always 1, similar for 1:1
+     * lock-free FIFOs.
+     * NOTE: before using this function, you must have added this channel as a consumer.
+     * @param data - thread local storage struct
+     * @param channel_id - channel you want to query, doesn't matter the type of channel. 
+     * @return - value greater than zero if channel has data. 
+     */
+    static
+    std::size_t channel_has_data(   ipc::thread_local_data *data, 
+                                    const channel_id_t channel_id );
+
     static
     std::size_t get_record_size( ipc::thread_local_data *data, void *ptr );
 

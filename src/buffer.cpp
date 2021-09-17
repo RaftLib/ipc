@@ -480,6 +480,38 @@ ipc::buffer::channel_has_producers( ipc::thread_local_data *tls, const ipc::chan
     return( (*(*found).second).meta.ref_count_prod > 0 );
 }
     
+
+std::size_t 
+ipc::buffer::channel_has_data( ipc::thread_local_data *data, const channel_id_t channel_id )
+{
+    const auto channel_found = data->channel_map.find( channel_id );
+    if( channel_found == data->channel_map.cend() )
+    {
+        //FIXME - should we return some error code using negative spectrum? 
+        return( 0 /** no data **/ );
+    }
+    auto *channel_info = (*channel_found).second;  
+    std::size_t size = 0;
+    switch( channel_info->meta.type )
+    {
+        case( ipc::mpmc_record):
+        {
+            assert( false /** unimplemented **/ );
+            return( 0 );
+        }
+        break;
+        case( ipc::spsc_record ):
+        {
+            size = ipc::buffer::spsc_lock_free::min_consumer_size( channel_info );
+        }
+        break;
+        default:
+            assert( false );
+
+    }
+    return( size );
+}
+    
 ipc::channel_map_t
 ipc::buffer::get_channel_list( ipc::thread_local_data *data )
 {

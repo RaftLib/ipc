@@ -111,6 +111,23 @@ TOP:
         } /** end for **/
         return( 0 ); /** keep some compilers happy **/
     }
+
+    
+    /**
+     * min_size - returns the minimum size that this queue could be
+     * from the consumer's perspective. Basically instead of going
+     * through and checking head/tail pointers, just check the credits.
+     */
+    inline static std::size_t min_consumer_size( PARENTNODE *channel )
+    {
+        const auto credits = channel->meta.cons_credits.load( std::memory_order_relaxed );
+        if( credits != 0 )
+        {
+            return( credits );
+        }
+        //ELSE
+        return( self_t::size( channel ) );
+    }
    
    /**
     * space_avail - returns the amount of space currently
