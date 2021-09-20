@@ -222,7 +222,8 @@ ipc::buffer::get_tmp_dir()
 void
 ipc::buffer::destruct( ipc::buffer *b,
                        const std::string &shm_handle,
-                       const bool unlink )
+                       const bool unlink,
+                       const bool unmap )
 {
     if( unlink )
     {
@@ -239,11 +240,14 @@ ipc::buffer::destruct( ipc::buffer *b,
             std::perror( errstr.str().c_str() );
         }
     }
-    shm::close( shm_handle,
-                (void**)&b,
-                b->allocated_size,
-                false,
-                unlink );
+    if( unmap )
+    {
+        shm::close( shm_handle,
+                    (void**)&b,
+                    b->allocated_size,
+                    false,
+                    unlink );
+    }
     return;
 }
 

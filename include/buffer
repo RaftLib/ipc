@@ -259,7 +259,8 @@ public:
     static
     void                    destruct( ipc::buffer *b,
                                       const std::string &shm_handle,
-                                      const bool unlink = true );
+                                      const bool unlink = true,
+                                      const bool unmap  = true );
     /**
      * add_channel - this function could be called per thread to 
      * add a channel to the local thread context. If the channel
