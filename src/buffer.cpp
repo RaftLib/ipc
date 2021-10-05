@@ -255,8 +255,11 @@ ipc::channel_id_t
 ipc::buffer::add_channel( ipc::thread_local_data    *data,
                           const channel_id_t        channel_id, 
                           const ipc::channel_type   type,
-                          const ipc::direction_t    dir )
+                          const ipc::direction_t    dir,
+                          const std::size_t         additional_bytes,
+                          ipc::buffer::init_func_t  f )
 {
+    UNUSED( f );
     assert( data != nullptr );
     const auto size_to_allocate( sizeof( ipc::channel_index_t ) );
     
@@ -293,9 +296,11 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
     
     if( channel_start < ipc::valid_offset )
     {
+        const auto additional_byte_multiple = 
+                ipc::buffer::heap_t::get_block_multiple( additional_bytes );
         // Create new node -- will have to acquire allocation semaphore
         // BEWARE - we already grabbed index semaphore, they're now nested
-        std::size_t blocks_to_allocate = channel_info_multiple + meta_multiple;
+        std::size_t blocks_to_allocate = channel_info_multiple + meta_multiple + additional_byte_multiple;
         
         void *mem_for_new_channel = 
             ipc::buffer::global_buffer_allocate(  data, 
@@ -325,7 +330,7 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
         
         
         mem_for_new_channel = ipc::buffer::translate_block( &data->buffer->data, channel_start );
-    
+
 
         //initialize new channel structure
         auto *node_to_add = 
@@ -363,6 +368,11 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
                 ipc::buffer::spsc_lock_free::init( channel );
             }
             break;
+            case( ipc::shared ):
+            {
+                
+            }
+            break;
             default:
                 assert( false );
 
@@ -383,6 +393,8 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
     /**
      * else, find_channel_buffer_offset function has set channel ptr to something valid
      * and the output contains the pointer to channel_info. 
+     * NOTE: we don't consider the shareddata segment ones here given we have,
+     * technically these are "special cases"
      */
     //two directions on the channel, producer or consumer
     switch( dir )
@@ -440,6 +452,25 @@ ipc::buffer::add_spsc_lf_record_channel(   ipc::thread_local_data   *data,
 {
     return( ipc::buffer::add_channel( data, channel_id, ipc::spsc_record, dir ) );
 }
+
+ipc::channel_id_t
+ipc::buffer::add_shared_segment( ipc::thread_local_data     *tls,
+                                 const channel_id_t         channel_id,
+                                 const std::size_t          n_bytes,
+                                 ipc::buffer::init_func_t   f )
+{
+    return( ipc::buffer::add_channel( tls, channel_id, ipc::shared, ipc::dir_not_set, n_bytes, f ) );  
+}
+
+
+void*
+ipc::buffer::open_shared_segment( ipc::thread_local_data *tls,
+                                  const channel_id_t     channel_id )
+{
+    
+    return( nullptr );
+}
+
 
 std::size_t
 ipc::buffer::get_record_size( ipc::thread_local_data *data, void *ptr )
