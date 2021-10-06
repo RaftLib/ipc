@@ -31,7 +31,7 @@
 #include "database.hpp"
 #include "threadlocaldata.hpp"
 #include "bufferdefs.hpp"
-
+#include "shared_seg.hpp"
 #include "buffer_base.hpp"
     
 
@@ -52,13 +52,6 @@ class buffer :
                public buffer_base
 
 {
-public:
-    /**
-     * the shared segment comes with a parameter that enables you
-     * to call an initialization function on the data segment before
-     * anybody can actually access it.
-     */
-     using init_func_t = std::function< void( void* ) >;
 private:
     static global_err_t gb_err;
 
@@ -145,7 +138,7 @@ private:
                               const ipc::channel_type   channel_type,
                               const ipc::direction_t    dir,
                               const std::size_t         additional_bytes = 0,
-                              ipc::buffer::init_func_t  f = nullptr);
+                              ipc::buffer::shm_seg::init_func_t  f = nullptr);
                                         
 public:
     
@@ -350,7 +343,7 @@ public:
     channel_id_t    add_shared_segment( ipc::thread_local_data *tls,
                                         const channel_id_t      channel_id,
                                         const std::size_t       n_bytes,
-                                        init_func_t             f );
+                                 ipc::buffer::shm_seg::init_func_t             f );
 
 
     /**
@@ -362,8 +355,9 @@ public:
      * @return valid pointer if no errors, nullptr if failure. 
      */
     static
-    void*           open_shared_segment( ipc::thread_local_data *tls,
-                                         const channel_id_t     channel_id );
+    ipc::tx_code           open_shared_segment( ipc::thread_local_data *tls_data,
+                                                const channel_id_t     channel_id,
+                                                void                   **data );
 
     /**
      * channel_has_data - return if the given CONSUMER channel in channel id, from the TLS block 

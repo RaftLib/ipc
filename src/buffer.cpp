@@ -257,9 +257,8 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
                           const ipc::channel_type   type,
                           const ipc::direction_t    dir,
                           const std::size_t         additional_bytes,
-                          ipc::buffer::init_func_t  f )
+                          ipc::buffer::shm_seg::init_func_t  f )
 {
-    UNUSED( f );
     assert( data != nullptr );
     const auto size_to_allocate( sizeof( ipc::channel_index_t ) );
     
@@ -281,7 +280,6 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
      * Acquire semaphore, must go after allocate otherwise we have 
      * nested semaphore acquire and deadlock.
      */
-     //FIXME
     auto sem = data->index_semaphore;
     if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
     {
@@ -300,7 +298,8 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
                 ipc::buffer::heap_t::get_block_multiple( additional_bytes );
         // Create new node -- will have to acquire allocation semaphore
         // BEWARE - we already grabbed index semaphore, they're now nested
-        std::size_t blocks_to_allocate = channel_info_multiple + meta_multiple + additional_byte_multiple;
+        std::size_t blocks_to_allocate = 
+            channel_info_multiple + meta_multiple + additional_byte_multiple;
         
         void *mem_for_new_channel = 
             ipc::buffer::global_buffer_allocate(  data, 
@@ -324,12 +323,15 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
 
         //make an actual meta-data structure
         new (mem_for_new_channel) ipc::allocate_metadata( 
-            channel_start           /** help the allocator find the base and de-allocate this block **/,
-            channel_info_multiple   /** count of blocks allocated, not including metadata **/
+            channel_start           
+            /** help the allocator find the base and de-allocate this block **/,
+            channel_info_multiple + additional_byte_multiple  
+            /** count of blocks allocated, not including metadata **/
         );
         
         
-        mem_for_new_channel = ipc::buffer::translate_block( &data->buffer->data, channel_start );
+        mem_for_new_channel = 
+            ipc::buffer::translate_block( &data->buffer->data, channel_start );
 
 
         //initialize new channel structure
@@ -337,15 +339,19 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
         new (mem_for_new_channel) ipc::channel_index_t( channel_id            /** id **/,
                                                         ipc::nodebase::normal /** node type **/,
                                                         channel_id );
+        /**
+         * this gives you a pointer back to the first block that is not the "meta" node
+         */
         channel = &(**node_to_add);
-    
+        channel->meta.type = type;
         switch( channel->meta.type )
         {
             case( ipc::mpmc_record ):
             {
                 //set up dummy node for LF queue 
                 auto dummy_info_multiple  = 
-                    ipc::buffer::heap_t::get_block_multiple( sizeof( ipc::record_index_t ) );
+                    ipc::buffer::heap_t::get_block_multiple( 
+                                        sizeof( ipc::record_index_t ) );
                 
                 void *mem_for_dummy_node = 
                     ipc::buffer::global_buffer_allocate(  data, 
@@ -353,11 +359,13 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
                                                           true ); 
 
 
-                auto *dummy_record = new (mem_for_dummy_node) ipc::record_index_t( ipc::nodebase::dummy );
+                auto *dummy_record = 
+                    new (mem_for_dummy_node) ipc::record_index_t( ipc::nodebase::dummy );
                 
 
                 channel->meta.dummy_node_offset = 
-                    ipc::buffer::calculate_block_offset( &data->buffer->data, dummy_record );
+                    ipc::buffer::calculate_block_offset( &data->buffer->data, 
+                                                         dummy_record );
                 ipc::buffer::mpmc_lock_free::init( channel, 
                                                    dummy_record,
                                                    &data->buffer->data );
@@ -370,7 +378,19 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
             break;
             case( ipc::shared ):
             {
-                
+                const auto seg_base = channel_start + channel_info_multiple; 
+
+                auto *seg_ptr = 
+                    ipc::buffer::translate_block( &data->buffer->data, seg_base );
+                /** 
+                 * this function knows the length, it's just to initialize, must
+                 * be within the semaphore region so that the memory is allocated
+                 * before anything is handed back to the "user-level" programmer.
+                 */
+                ipc::buffer::shm_seg::init( &data->buffer->data /** buff base **/, 
+                                            channel             /** channel base **/,
+                                            seg_ptr             /** base of shared **/,
+                                            f );
             }
             break;
             default:
@@ -379,7 +399,6 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
         }
 
         
-        channel->meta.type = type;
         if( ! ipc::buffer::channel_list_t::insert( &(data->buffer->data), 
                                                    channel_start,
                                                    &(data->buffer->channel_list) ) )
@@ -393,8 +412,6 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
     /**
      * else, find_channel_buffer_offset function has set channel ptr to something valid
      * and the output contains the pointer to channel_info. 
-     * NOTE: we don't consider the shareddata segment ones here given we have,
-     * technically these are "special cases"
      */
     //two directions on the channel, producer or consumer
     switch( dir )
@@ -409,6 +426,13 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
             channel->meta.ref_count_cons++ /** atomic inc **/;
         }
         break;
+        case( ipc::dir_not_set ):
+        {
+            if( channel->meta.type == ipc::shared )
+            {
+                channel->meta.ref_count_shd++ /** atomic inc **/;
+            }
+        }
         default:
         {
             //shouldn't be here
@@ -457,18 +481,32 @@ ipc::channel_id_t
 ipc::buffer::add_shared_segment( ipc::thread_local_data     *tls,
                                  const channel_id_t         channel_id,
                                  const std::size_t          n_bytes,
-                                 ipc::buffer::init_func_t   f )
+                                 ipc::buffer::shm_seg::init_func_t   f )
 {
     return( ipc::buffer::add_channel( tls, channel_id, ipc::shared, ipc::dir_not_set, n_bytes, f ) );  
 }
 
 
-void*
-ipc::buffer::open_shared_segment( ipc::thread_local_data *tls,
-                                  const channel_id_t     channel_id )
+ipc::tx_code
+ipc::buffer::open_shared_segment( ipc::thread_local_data *tls_data,
+                                  const channel_id_t     channel_id,
+                                  void                   **data )
 {
+    assert( tls_data != nullptr );
+    /** check that channel exists for this tls structure **/ 
+    auto channel_found = tls_data->channel_map.find( channel_id );
+    if( channel_found == tls_data->channel_map.end() )
+    {
+        return( ipc::no_such_channel );
+    }
+    auto *channel_info = (*channel_found).second; 
+    const auto tx_code = 
+    ipc::buffer::shm_seg::get_segment( channel_info, 
+                                       data, 
+                                       &tls_data->buffer->data );
     
-    return( nullptr );
+
+    return( tx_code );
 }
 
 
@@ -692,12 +730,7 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
     ipc::channel_info *ch_ptr = tls->channel_map[ channel ];
     //get rid of our local data allocation, return to buffer
     auto &th_local_allocation = tls->channel_local_allocation[ channel ]; 
-
     ipc::buffer::free_channel_memory( tls, th_local_allocation );
-    /**
-     * decrement refcount, if zero then free channel allocation, 
-     * must get semaphore first.
-     */
 
     /**
      * Acquire semaphore, must go after allocate otherwise we have 
@@ -712,9 +745,16 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
         shutdown_handler( 0 );
     }
     
-    //two directions on the channel, producer or consumer
+    /**
+     * these are not atomic, do not move outside of semaphore!!
+     * two directions on the channel, producer or consumer
+     */
     switch( th_local_allocation.dir )
     {
+        /**
+         * decrement refcount, if zero then free channel allocation, 
+         * must get semaphore first.
+         */
         case( ipc::producer ):
         {
             //this part needs index sem
@@ -725,6 +765,14 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
         {
             //this part needs index sem
             --(ch_ptr->meta.ref_count_cons);
+        }
+        break;
+        case( ipc::dir_not_set ):
+        {
+            if( ch_ptr->meta.type == ipc::shared )
+            {
+                --(ch_ptr->meta.ref_count_shd);
+            }
         }
         break;
         default:
@@ -743,13 +791,34 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
                 "sem val(" << sem << ") @ line " << __LINE__;
         shutdown_handler( 0 );
     }
-    
-    if( ch_ptr->meta.ref_count_prod == 0 && ch_ptr->meta.ref_count_cons == 0 )
+    switch( ch_ptr->meta.type )
     {
-        ipc::buffer::remove_channel( tls, channel );
+        case( ipc::spsc_record ):
+        case( ipc::mpmc_record ):
+        {
+            if( ch_ptr->meta.ref_count_prod == 0 && ch_ptr->meta.ref_count_cons == 0 )
+            {
+                ipc::buffer::remove_channel( tls, channel );
+            }
+
+        }
+        break;
+        case( ipc::shared ):
+        {
+            if( ch_ptr->meta.ref_count_shd == 0 )
+            {
+                ipc::buffer::remove_channel( tls, channel );
+            }
+        }
+        break;
+        default:
+        {
+            assert( false );
+        }
     }
-    tls->channel_map.erase( channel );
+    //remove everything from local map
     tls->channel_local_allocation.erase( channel );
+    tls->channel_map.erase( channel );
 }
 
 

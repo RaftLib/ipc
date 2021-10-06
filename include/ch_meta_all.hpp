@@ -37,7 +37,8 @@ struct alignas( L1D_CACHE_LINE_SIZE ) ch_meta_all
    
     ipc::refcnt_t       ref_count_prod                    = 0; 
     ipc::refcnt_t       ref_count_cons                    = 0; 
-    
+    ipc::refcnt_t       ref_count_shd                     = 0; 
+
     ipc::channel_type   type                              = ipc::spsc_record;
     ipc::sem::sem_key_t channel_semaphore                 = { 0 };
     /**

@@ -96,10 +96,16 @@ struct thread_local_data
      */
     ipc::buffer *buffer = nullptr;
     
-
+    /**
+     * contains all channels, including ones that
+     * are shared segment channels. 
+     */
     std::map< ipc::channel_id_t,
               ipc::channel_info* >  channel_map;
     
+    /**
+     * does not contain shared segment channels. 
+     */
     std::map< ipc::channel_id_t, 
               ipc::local_allocation_info > channel_local_allocation;
 

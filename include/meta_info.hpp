@@ -28,6 +28,7 @@
 #include "lock_ll.hpp"
 #include "mpmc_lock_free.hpp"
 #include "spsc_lock_free.hpp"
+#include "shared_seg.hpp"
 #include "channelindex.hpp"
 #include "recordindex.hpp"
 
@@ -54,6 +55,9 @@ public:
     using spsc_lock_free    = ipc::spsc_lock_free_queue< ipc::channel_info,
                                                          void,
                                                          translate_helper >;
+    using shm_seg           = ipc::shared_seg< ipc::channel_info /**reuse spsc**/, 
+                                               translate_helper >;
+    
     meta_info()     = default;
     ~meta_info()    = default;
 
