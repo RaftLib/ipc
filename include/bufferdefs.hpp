@@ -87,6 +87,7 @@ namespace ipc
     {
         spsc_record,
         mpmc_record,
+        shared,
         atomic,
         spsc_data,
         mpmc_data,
@@ -99,6 +100,7 @@ namespace ipc
        {{
              "spsc_record",
              "mpmc_record",
+             "shared",
              "atomic",
              "spsc_data",
              "mpmc_data",

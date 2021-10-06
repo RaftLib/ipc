@@ -24,12 +24,14 @@
 #include <cstdint>
 #include <string>
 #include <sstream>
+#include <functional>
+
 #include "genericnode.hpp"
 #include "indexbase.hpp"
 #include "database.hpp"
 #include "threadlocaldata.hpp"
 #include "bufferdefs.hpp"
-
+#include "shared_seg.hpp"
 #include "buffer_base.hpp"
     
 
@@ -53,8 +55,6 @@ class buffer :
 private:
     static global_err_t gb_err;
 
-
-    
     /** 
      * set global block inc to be 1MiB, will allocate multiple 'x'
      * of this if the user requests large blocks.
@@ -136,9 +136,13 @@ private:
     channel_id_t add_channel( ipc::thread_local_data    *tls, 
                               const channel_id_t        channel_id,
                               const ipc::channel_type   channel_type,
-                              const ipc::direction_t    dir );
+                              const ipc::direction_t    dir,
+                              const std::size_t         additional_bytes = 0,
+                              ipc::buffer::shm_seg::init_func_t  f = nullptr);
                                         
 public:
+    
+
     buffer();
     ~buffer() = default;
     
@@ -221,11 +225,18 @@ public:
                                         void **record );
 
 
-
+    /**
+     * get_tls_structure - allocate a thread local structure (TLS) for each thread
+     * that will use the buffer. This must be done to use almost all of the 
+     * subsequent buffer functions. 
+     */
     static ipc::thread_local_data* get_tls_structure( ipc::buffer *buffer,
                                                       const ipc::thread_id_t thread_id );
 
-
+    /**
+     * opposite of get_tls_structure, close the tls structure that was once opened,
+     * also unlinks things allocated for this TLS (housekeeping). 
+     */
     static void close_tls_structure( ipc::thread_local_data *d );
 
     /**
@@ -315,7 +326,39 @@ public:
     channel_id_t add_spsc_lf_record_channel( ipc::thread_local_data *tls, 
                                              const channel_id_t channel_id,
                                              ipc::direction_t   dir );
-   
+    
+    
+    /**
+     * add_shared_segment - open a static block of memory between 
+     * multiple processes/threads. It is on the user to ensure that
+     * data is properly synchronized between this shared region. As
+     * an example, only one writer, multiple readers. 
+     * @param tls - TLS segment,
+     * @param channel_id - channel that you want the shared segment on
+     * @param n_bytes - unlike the record function this is fixed size,
+     * @return channel_id_t - should match the param channel, or err
+     * codes are returned, see record channel for description. 
+     */
+    static
+    channel_id_t    add_shared_segment( ipc::thread_local_data *tls,
+                                        const channel_id_t      channel_id,
+                                        const std::size_t       n_bytes,
+                                 ipc::buffer::shm_seg::init_func_t             f );
+
+
+    /**
+     * open the block of memory associated with a channel_id and shared
+     * segment. You can use the "record_size" functions to get the total
+     * size if needed. 
+     * @param tls - TLS segment
+     * @param channel_id - channel that the shared segment is on.
+     * @return valid pointer if no errors, nullptr if failure. 
+     */
+    static
+    ipc::tx_code           open_shared_segment( ipc::thread_local_data *tls_data,
+                                                const channel_id_t     channel_id,
+                                                void                   **data );
+
     /**
      * channel_has_data - return if the given CONSUMER channel in channel id, from the TLS block 
      * data has data on the channel. Returns at least 1  if the channel has data. For
@@ -331,20 +374,46 @@ public:
     static
     std::size_t channel_has_data(   ipc::thread_local_data *data, 
                                     const channel_id_t channel_id );
-
+    
+    /**
+     * returns the full allocated extend of the record, e.g., if the producer
+     * allocated 256B, the actual record size is not this but whatever the 
+     * underlying allocation block size. That alloc block size is what 
+     * is returned here, well, however many blocks are contained in this
+     * record. 
+     * @param data - TLS segment
+     * @param ptr  - ptr to cehck the record size, must have been allocated from 
+     * our buffer. 
+     * @return size of the object. 
+     */
     static
     std::size_t get_record_size( ipc::thread_local_data *data, void *ptr );
 
-
+    
+    /**
+     * returns true if the indicated channel has currently attached producers. 
+     * @param tls - TLS segment 
+     * @param channel - channel to return the value on. 
+     * @return bool - true if producers exist on the channel, false otherwise. 
+     */
     static
     bool
     channel_has_producers( ipc::thread_local_data *tls, const ipc::channel_id_t channel );
 
+    /**
+     * has_active_channels - returns true if there are any active channels
+     * in the buffer used by the TLS indicated. 
+     * @param tls - TLS segment
+     * @param bool - true if any active channels. 
+     */
     static
     bool
     has_active_channels( ipc::thread_local_data *tls );
 
-
+    /**
+     * returns a channel_map_t object filled with the currently active
+     * channels, these channels are not guaranteed to still be active. 
+     */
     static
     ipc::channel_map_t
     get_channel_list( ipc::thread_local_data *tls );
@@ -362,6 +431,7 @@ public:
     /**
      * remove_channel - remove channel with given ID assicoated with this tls
      * structure.
+     * NOTE: this works for all types of channels. 
      * @return bool - if channel found, if found it's refcount is decremented
      * if refcount is zero, channel is removed and deallocated to buffer.
      */
