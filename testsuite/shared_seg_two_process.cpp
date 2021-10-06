@@ -36,7 +36,7 @@ struct shm_seg
         real_ptr->value = -1;
     }
 
-    std::int64_t value = -1;
+    volatile std::int64_t value = -1;
 };
 
 
