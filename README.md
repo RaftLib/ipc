@@ -10,7 +10,8 @@ Currently implemented is the following:
 - per-thread TLS lock-free allocation slab
 - single-producer, single-consumer channel (multi-process and multi-threaded)
 - multiple channels per buffer (you can have as many independent channels as
-you want till you run out of memory. 
+you want till you run out of memory).
+- named static shared memory segment (as a channel) which can be used for synchronization or other purposes where message passing semantics aren't useful. 
 
 ## Why
 * Lack of existing simple point-to-point multi-process
