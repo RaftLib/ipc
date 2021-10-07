@@ -95,7 +95,10 @@ void producer(  const int count,
                                          channel_id, 
                                          (void**)&output ) != ipc::tx_success );
         //spin till shared seg value is equal to what we expect
-        while( shared_seg->value != i );
+        while( shared_seg->value != i )
+        {
+            __asm__ volatile( "" : : "m" (shared_seg->value) );
+        }
     }
     ipc::buffer::unlink_channels( tls_producer );
     std::cout << "end producer: " << 

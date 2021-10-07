@@ -868,6 +868,14 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
                 --(ch_ptr->meta.ref_count_cons);
             }
             break;
+            case( ipc::dir_not_set ):
+            {
+                if( ch_ptr->meta.type == ipc::shared )
+                {
+                    --(ch_ptr->meta.ref_count_shd);
+                }
+            }
+            break;
             default:
             {
                 //shouldn't be here

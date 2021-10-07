@@ -45,17 +45,18 @@ ipc::buffer::add_spsc_lf_record_channel( tls_producer, channel_id )
 
 /** get some memory and do something with it **/
 int *output = (int*)
+/** currently single allocations limited to 1MiB **/
 ipc::buffer::allocate_record( tls_producer, 
                               sizeof( int ), 
                               channel_id );
 
-/** send the record **/
+/** lock-free record send **/
 while( ipc::buffer::send_record( tls_producer, 
                                  channel_id, 
                                  (void**)&output ) 
                                  != ipc::tx_success );
 
-//NOTE: consumer side has equiv receive record
+//NOTE: consumer side has equiv lock-free receive record
 
 /** close tls **/
 ipc::buffer::close_tls_structure( tls_producer );
