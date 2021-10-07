@@ -67,8 +67,8 @@ ipc::buffer::destruct( buffer       /** buffer ptr  **/,
 
 # Compiling
 
-Currently only for Linux systems. Will add OS X and Windows 
-(likely OS X first) soon. Compiles with gcc 9+ and clang 10+. 
+Currently only for Linux and OS X systems. Will add Windows 
+soon. Compiles with gcc 9+ and clang 10+. 
 
 ```
 git clone https://github.com/RaftLib/ipc.git
