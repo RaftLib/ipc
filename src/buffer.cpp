@@ -433,6 +433,7 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
                 channel->meta.ref_count_shd++ /** atomic inc **/;
             }
         }
+        break;
         default:
         {
             //shouldn't be here
