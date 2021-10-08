@@ -541,6 +541,23 @@ ipc::buffer::has_active_channels( ipc::thread_local_data *tls )
 {
     return( ipc::buffer::channel_list_t::size( &tls->buffer->channel_list ) != 0 );  
 }
+
+
+bool
+ipc::buffer::has_channel( ipc::thread_local_data *tls, const ipc::channel_id_t channel, const bool blocking )
+{
+    bool found = false;
+    ipc::channel_info *ch_st = nullptr;
+    do{
+    //come back here
+        if( ipc::buffer::find_channel( tls, channel, &ch_st ) !=  ipc::channel_not_found )
+        {
+            found = true;
+            assert( ch_st != nullptr );
+        }
+    }while( ! found && blocking );
+    return( found );
+}
     
 bool
 ipc::buffer::channel_has_producers( ipc::thread_local_data *tls, const ipc::channel_id_t channel )

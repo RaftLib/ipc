@@ -70,6 +70,16 @@ private:
     static void* global_buffer_allocate( ipc::thread_local_data *data, 
                                          std::size_t &blocks,
                                          bool        force_size = false );
+    /**
+     * find_channel - returns the information about the target 
+     * channel, specifically you give as parameters the TLS and 
+     * desired channel ID, and if that channel exists it will set
+     * the pointer channel to the desired channel structure. 
+     */
+    static 
+    channel_id_t find_channel( ipc::thread_local_data *tls, 
+                                const channel_id_t      channel_id,
+                                ipc::channel_info       **channel );
    
     /**
      * create_meta_record - create a per-allocate (per local thread allocate) 
@@ -343,7 +353,7 @@ public:
     channel_id_t    add_shared_segment( ipc::thread_local_data *tls,
                                         const channel_id_t      channel_id,
                                         const std::size_t       n_bytes,
-                                 ipc::buffer::shm_seg::init_func_t             f );
+                                        ipc::buffer::shm_seg::init_func_t             f = nullptr );
 
 
     /**
@@ -409,6 +419,21 @@ public:
     static
     bool
     has_active_channels( ipc::thread_local_data *tls );
+    
+
+    /**
+     * has_channel - returns true if the channel exists within the buffer, not necessarily
+     * added yet to the thread local storage (it may need to be added still), blocks until 
+     * it does exist if (blocking == true).
+     * @param tls - TLS segment
+     * @param channel - channel you want to exist 
+     * @param blocking - set to true if you want this function to block until 
+     * the channel exists. 
+     * @return bool - true if channel exists. 
+     */
+    static
+    bool
+    has_channel( ipc::thread_local_data *tls, const ipc::channel_id_t channel, const bool blocking );
 
     /**
      * returns a channel_map_t object filled with the currently active
@@ -418,16 +443,6 @@ public:
     ipc::channel_map_t
     get_channel_list( ipc::thread_local_data *tls );
     
-    /**
-     * find_channel - returns the information about the target 
-     * channel, specifically you give as parameters the TLS and 
-     * desired channel ID, and if that channel exists it will set
-     * the pointer channel to the desired channel structure. 
-     */
-    static 
-    channel_id_t find_channel( ipc::thread_local_data *tls, 
-                                const channel_id_t      channel_id,
-                                ipc::channel_info       **channel );
     /**
      * remove_channel - remove channel with given ID assicoated with this tls
      * structure.

@@ -23,6 +23,7 @@ set( TESTAPPS #list apps
         multiChannelIteration
         record_size
         shared_seg_two_process
+        shared_seg_two_process_has_channel
         spsc_two_threads
         spsc_two_processes
         spsc_two_processes_has_data
