@@ -352,8 +352,8 @@ public:
     static
     channel_id_t    add_shared_segment( ipc::thread_local_data *tls,
                                         const channel_id_t      channel_id,
-                                        const std::size_t       n_bytes,
-                                        ipc::buffer::shm_seg::init_func_t             f = nullptr );
+                                        const std::size_t                             n_bytes   = 0,
+                                        ipc::buffer::shm_seg::init_func_t             f         = nullptr );
 
 
     /**
