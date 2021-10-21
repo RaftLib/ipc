@@ -274,7 +274,8 @@ public:
      * buffer will be unmapped from the callers  address space. 
      * @param   b - the buffer to be destroyed
      * @param   shm_handle - the string handle associated with b
-     * @return  ipc::buffer* object, fully initialized and ready to go
+     * @param   unlink - call unlink on the buffer
+     * @param   unmap - unmap the buffer, should usually be "true". 
      * @throws - see shm header file for errors.
      */
     static
