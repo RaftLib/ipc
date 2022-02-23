@@ -24,51 +24,88 @@
 #include <cassert>
 #include <iostream>
 #include "bufferdefs.hpp"
-#include "padsize.hpp"
 
 /** ch_info components **/
-#include "ch_meta_all.hpp"
-#include "ch_ctrl_all.hpp"
+#include "channelinfo_base.hpp"
 #include "ch_ctrl_spsc.hpp"
 #include "ch_entries_spsc.hpp"
-
+#include "ch_data_spsc.hpp"
 
 
 namespace ipc
 {
+
 /**
- * FIXME - we need an assert to check cache line size
- * hasn't changed on the machine we're running on since
- * the algorithms rely on the cache line width. 
+ * basic one which is used to cast
+ * just about everywhere to get the 
+ * meta-information for each channel 
+ * type. 
  */
-struct channel_info 
+struct channel_info : public ipc::channel_info_base 
 {
+public:
     constexpr channel_info() = default;
 
-    constexpr channel_info( const ipc::channel_id_t ch_id ) : meta( ch_id ),
-                                                              ctrl_all(),
-                                                              ctrl_spsc(),
-                                                              spsc_q() 
+    constexpr channel_info( const ipc::channel_id_t ch_id ) : 
+        ipc::channel_info_base( ch_id ), 
+        ctrl_spsc()
     {
 
     }
 
 
-    ipc::ch_meta_all        meta;
-    ipc::ch_ctrl_all        ctrl_all;
     ipc::ch_ctrl_spsc       ctrl_spsc;
+};
+
+
+/**
+ * variation specifically for record types
+ */
+struct channel_info_record  : public ipc::channel_info
+{
+public:
+    constexpr channel_info_record() = default;
+
+    constexpr channel_info_record( const ipc::channel_id_t ch_id ) : 
+        ipc::channel_info( ch_id ), 
+        spsc_q() 
+    {
+
+    }
+
+
     ipc::ch_entries_spsc    spsc_q; 
+};
+
+
+/**
+ * struct type with structures for typed in-band
+ * data queue. 
+ */
+template < class T, int entries >
+struct channel_info_inband_data  : public ipc::channel_info
+{
+public:
+    constexpr channel_info_inband_data() = default;
+
+    constexpr channel_info_inband_data( const ipc::channel_id_t ch_id ) : 
+        ipc::channel_info( ch_id ), 
+        spsc_q() 
+    {
+
+    }
+
+
+    ipc::ch_data_spsc<T,entries>        spsc_q; 
 };
 
 inline 
 std::ostream& operator << ( std::ostream &s, const channel_info &info )
 {
     s << "{\n";
-    s << "  channel_id: " << info.meta.channel_id << ",\n";
-    s << "  ref_count_prod:  " << info.meta.ref_count_prod << ",\n";
-    s << "  ref_count_cons:  " << info.meta.ref_count_cons << ",\n";
-    s << "  data_head: " <<  info.ctrl_all.data_head << ",\n";
-    s << "  data_tail: " <<  info.ctrl_all.data_tail << ",\n";
+    s << (ipc::channel_info_base&)(info) << "\n";
+    s << "\t" << info.ctrl_spsc.wrap_head << "\n";
+    s << "\t" << info.ctrl_spsc.wrap_tail << "\n";
     s << "}";
     return( s );
 }

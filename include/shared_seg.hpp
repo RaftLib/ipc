@@ -33,6 +33,14 @@ template < class PARENTNODE, class TRANSLATE > class shared_seg
 {
 public:
     using init_func_t = std::function< void( void* ) >;
+    using self_t      = shared_seg< PARENTNODE, TRANSLATE >;
+
+    struct data
+    {
+        void        *buffer_base   = nullptr;
+        void        *seg_base      = nullptr;
+        init_func_t f              = nullptr;
+    };
 
     shared_seg()  = delete;
     ~shared_seg() = delete;
@@ -41,17 +49,15 @@ public:
      * as optional for users to initialize the segment to 
      * specific values before it's handed back to anyone.
      */
-    static void init( void *buffer_base, 
-                      void *channel_base,
-                      void *seg_base, 
-                      init_func_t f = nullptr )
+    static void init( PARENTNODE *channel_base,
+                      void *d )
     {
+        auto *_data = (self_t::data)(d);
         /** looks a bit odd given we're going to reuse the channel structure **/ 
-        auto *node = (PARENTNODE*)channel_base;
         //get offset to add
         const auto offset_to_add = 
-                TRANSLATE::calculate_block_offset( buffer_base,
-                                                   seg_base );
+                TRANSLATE::calculate_block_offset( _data->buffer_base,
+                                                   _data->seg_base );
         /** 
          * set queue head entry to shared mem seg. Ultimately
          * the reason we re-used the shm segment is we wanted
@@ -59,8 +65,11 @@ public:
          * region without having to set up sep. channels so, these
          * can be "sub-channels" at some future point. 
          */
-        node->spsc_q.entry[0] = offset_to_add;
-        if( f != nullptr ){ f( seg_base ); }
+        channel_base->spsc_q.entry[ 0 ] = offset_to_add;
+        if( _data->f != nullptr )
+        { 
+            _data->f( _data->seg_base ); 
+        }
         return;
     }
 

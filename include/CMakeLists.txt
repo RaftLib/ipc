@@ -3,9 +3,6 @@ list( APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake )
 
 set( IPCINCDIR ${CMAKE_INSTALL_PREFIX}/include )
 
-##
-# create raftinc dir in includes
-##
 install( DIRECTORY DESTINATION ${IPCINCDIR} )
 
 file( GLOB_RECURSE TEMPLATES    *.tcc   )

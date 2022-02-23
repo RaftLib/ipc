@@ -33,7 +33,7 @@
 #include "bufferdefs.hpp"
 #include "shared_seg.hpp"
 #include "buffer_base.hpp"
-    
+#include "channel_helper.tcc" 
 
 
 namespace ipc
@@ -48,8 +48,7 @@ struct global_err_t
 
 
 
-class buffer :
-               public buffer_base
+class buffer : public buffer_base
 
 {
 private:
@@ -142,13 +141,21 @@ private:
     static void free_channel_memory( ipc::thread_local_data *data, 
                                      ipc::local_allocation_info &info );
     
-    static
-    channel_id_t add_channel( ipc::thread_local_data    *tls, 
-                              const channel_id_t        channel_id,
-                              const ipc::channel_type   channel_type,
-                              const ipc::direction_t    dir,
-                              const std::size_t         additional_bytes = 0,
-                              ipc::buffer::shm_seg::init_func_t  f = nullptr);
+
+
+
+    template < ipc::channel_type ct, std::size_t n_entries = 0, class T = void >
+    static ipc::channel_id_t add_channel(  ipc::thread_local_data                *tls,
+                                           const channel_id_t                    channel_id,
+                                           const ipc::direction_t                dir )
+    {
+        return( ipc::channel_helper< ct, 
+                                     n_entries, 
+                                     T, 
+                                     decltype( (*this) ) >::add_channel( tls, 
+                                                                         channel_id, 
+                                                                         dir ) );
+    }
                                         
 public:
     
@@ -233,7 +240,7 @@ public:
     static ipc::tx_code receive_record( ipc::thread_local_data *tls_data,
                                         const ipc::channel_id_t channel_id,
                                         void **record );
-
+    
 
     /**
      * get_tls_structure - allocate a thread local structure (TLS) for each thread
@@ -283,32 +290,9 @@ public:
                                       const std::string &shm_handle,
                                       const bool unlink = true,
                                       const bool unmap  = true );
-    /**
-     * add_channel - this function could be called per thread to 
-     * add a channel to the local thread context. If the channel
-     * already exists in the global context then this channel
-     * is added to the local thread context with a zero allocation
-     * (zero given this thread has yet to call allocate on this 
-     * c)hannel). Call allocate once you have channels added to 
-     * get some memory. 
-     * @param   tls - allocated and valid thread_local_data structure
-     * @param   channel_id - id of channel you want to add to this
-     * thread context. If it doesn't exist, it will be created for you
-     * @return channel id that was added if successful. Returns error
-     * codes found in bufferdata.hpp if not successful. 
-     * specific error codes
-     * ipc::null_channel - something very bad happened, plz check code
-     * ipc::channel_alloc_err - memory for channel could not be 
-     * allocated
-     * ipc::channel_err - channel could not be inserted due to some
-     * error. 
-     */
-    //static
-    //channel_id_t add_mn_lf_channel( ipc::thread_local_data *tls, 
-    //                                const channel_id_t channel_id );
     
     /**
-     * add_spsc_lf_record - this function could be called per thread to 
+     * add_channel - this function could be called per thread to 
      * add a recordchannel to the lacal thread context. Record channels
      * are designed for use cases where mixed-object types are needed of 
      * varying size requirements on a single channel. As an example, if 
@@ -333,12 +317,23 @@ public:
      * ipc::channel_err - channel could not be inserted due to some
      * error. 
      */
+    template < ipc::channel_type ct, 
+               std::size_t n_entries = 0, 
+               class T = void >
     static
-    channel_id_t add_spsc_lf_record_channel( ipc::thread_local_data *tls, 
-                                             const channel_id_t channel_id,
-                                             ipc::direction_t   dir );
-    
-    
+    channel_id_t add_channel( ipc::thread_local_data *tls,
+                              const channel_id_t channel_id,
+                              ipc::direction_t direction )
+    {
+        return( 
+            ipc::buffer::channel_helper<    ct, 
+                                            n_entries, 
+                                            T >::add_channel(   tls, 
+                                                                channel_id, 
+                                                                direction )
+        );
+    }
+
     /**
      * add_shared_segment - open a static block of memory between 
      * multiple processes/threads. It is on the user to ensure that
@@ -446,10 +441,12 @@ public:
     
     /**
      * remove_channel - remove channel with given ID assicoated with this tls
-     * structure.
+     * structure, this one doesn't care if other actors are using the channel,
+     * it will simply delete. Be careful, prefer usage of 'unlink_channel' to
+     * this function as it will check the refcount and only remove the channel
+     * if there are no extant producers/consumers attached. 
      * NOTE: this works for all types of channels. 
-     * @return bool - if channel found, if found it's refcount is decremented
-     * if refcount is zero, channel is removed and deallocated to buffer.
+     * @return bool - if channel found and removed.
      */
     static
     bool                  remove_channel( ipc::thread_local_data *tls,

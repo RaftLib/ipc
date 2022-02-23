@@ -25,20 +25,22 @@
 #include "channelinfo.hpp"
 #include "recordindex.hpp"
 #include <functional>
+#include "meta_info.hpp"
 
 #include <thread>
 #include <atomic>
 
 
+using channel_type = ipc::channel_info_record;
 
-using lf_queue_t = 
-    ipc::spsc_lock_free_queue< ipc::channel_info      /** control region **/, 
-                               void                   /** lf node        **/,
-                               ipc::translate_helper  /** translator     **/>;
+using lf_queue_t = ipc::meta_info::spsc_lock_free; 
 
 using gate_t = std::atomic< int >;
 
-void producer( const int count, ipc::channel_info *ch_info, void *buffer, gate_t &g )
+void producer( const int                    count, 
+               channel_type                *ch_info, 
+               void                        *buffer, 
+               gate_t                       &g )
 {
     g++;
     while( g != 2 ){ __asm__ volatile ( "nop" : : : ); }
@@ -55,7 +57,7 @@ void producer( const int count, ipc::channel_info *ch_info, void *buffer, gate_t
     return;
 }
 
-void consumer( const int count, ipc::channel_info *ch_info, void *buffer, gate_t &g )
+void consumer( const int count, channel_type *ch_info, void *buffer, gate_t &g )
 {
     g++;
     while( g != 2 ){ __asm__ volatile ( "nop" : : : ); }
@@ -84,10 +86,10 @@ void consumer( const int count, ipc::channel_info *ch_info, void *buffer, gate_t
 int main()
 {
     void *buffer    = malloc( (1 << 30) );
-    auto *channel_info_obj = new ipc::channel_info( 0 );
+    auto *channel_info_obj = new channel_type( 0 );
     gate_t gate = {0};
 
-    lf_queue_t::init( channel_info_obj );
+    lf_queue_t::init( channel_info_obj, nullptr );
 
     //max count is 30 - 12 or (1<<18)
     const auto count = (1<<17);

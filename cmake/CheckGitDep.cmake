@@ -16,13 +16,13 @@ include( ${DEPSRC}/gitmodules.cmake )
 ##
 # NOW CHECK THEM OUT 
 ##
-include(ExternalProject)
+#include(ExternalProject)
 
 foreach( GMOD ${GIT_MODULES} )
  message( STATUS  "Initializing sub-module ${DEPSRC}/${GMOD} from git repo!" )
- execute_process( COMMAND git submodule init ${DEPSRC}/${GMOD}
+ execute_process( COMMAND git submodule init ${DEPDIR}/${GMOD}
                   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}) 
- execute_process( COMMAND git submodule update ${DEPSRC}/${GMOD} 
+ execute_process( COMMAND git submodule update ${DEPDIR}/${GMOD} 
                   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
  ##
  # build execs if needed

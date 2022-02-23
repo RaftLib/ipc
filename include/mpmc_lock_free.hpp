@@ -32,7 +32,13 @@ template < class PARENTNODE, class LOCKFREE_NODE, class TRANSLATE >
 {
 public:
     using self_t = mpmc_lock_free_queue< PARENTNODE, LOCKFREE_NODE, TRANSLATE >;
-   
+  
+    struct data
+    {
+        void            *buffer_base = nullptr;
+        LOCKFREE_NODE   *dummy_node  = nullptr;
+    };
+
     mpmc_lock_free_queue() = delete;
 
     
@@ -53,10 +59,13 @@ public:
      * calling VA space. 
      * @return - void.
      */
-    static void init( PARENTNODE *channel, LOCKFREE_NODE *dummy, void *buffer_base )
+    static void init( PARENTNODE *channel, void *d )
     {
+        auto *_data = (self_t::data*)(d);
+
         //get dummy node offset for this channel (to be used by all endpoints)
-        const auto node_block_address = TRANSLATE::calculate_block_offset( buffer_base, dummy );
+        const auto node_block_address = TRANSLATE::calculate_block_offset( _data->buffer_base, 
+                                                                           _data->dummy_node );
         //set all offsets initially to dummy node
         channel->ctrl_all.data_head = 
             channel->ctrl_all.data_tail = 

@@ -24,7 +24,7 @@ int main()
         //should have no channels
         exit( EXIT_FAILURE );
     }
-    ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id, ipc::producer );
+    ipc::buffer::add_channel< ipc::spsc_record >( fake_tls, channel_id, ipc::producer );
     
     if( ipc::buffer::has_active_channels( fake_tls ) != true )
     {
@@ -32,7 +32,7 @@ int main()
         exit( EXIT_FAILURE );
     }
     
-    ipc::buffer::add_spsc_lf_record_channel( fake_tls, channel_id + 1, ipc::producer );
+    ipc::buffer::add_channel< ipc::spsc_record >( fake_tls, channel_id + 1, ipc::producer );
     
     ipc::buffer::close_tls_structure( fake_tls );
     if( ipc::buffer::has_active_channels( fake_tls ) )

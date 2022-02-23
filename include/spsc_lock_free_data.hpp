@@ -1,5 +1,14 @@
 /**
- * spsc_lock_free.hpp - 
+ * spsc_lock_free.hpp - variant of the lock-free channel that 
+ * does inline data transfer of a fixed size and only for primitive
+ * (basic) types. This one will overlay a type-sized struct on top
+ * of what is provided in ch_entries_spsc.hpp for this channel, no 
+ * external data structures are needed (as in no other allocates),
+ * downside is that you get a fixed channels ize. We'll add functions
+ * that allow the user to check the size of the channel and such, but
+ * until the rest of RaftLib's queue is ported here, we'll have this 
+ * queue and the other record based ring-buffer. 
+ *
  * @author: Jonathan Beard
  * @version: Wed Jul 28 12:50:28 2021
  * 

@@ -25,13 +25,20 @@
 
 namespace ipc
 {
-  /**
-   * basically we have a generic node type here, 
-   * that has inserted within it a data structure
-   * that has head/tail pointers into the async
-   * FIFO that contains data for each thread. 
-   */
-  using channel_index_t = index_t< ipc::channel_info >;   
+    /**
+     * basically we have a generic node type here, 
+     * that has inserted within it a data structure
+     * that has head/tail pointers into the async
+     * FIFO that contains data for each thread. 
+     */
+    using channel_index_t = index_t< ipc::channel_info >;
+
+    using channel_index_record_t = index_t< ipc::channel_info_record >;
+    
+    template < class T, int entries > 
+    using channel_index_inband_data_t = 
+        index_t< ipc::channel_info_inband_data< T, entries > >;
+
 } /** end namespace ipc **/
 
 #endif /* END _CHANNELINDEX_HPP_ */

@@ -1,5 +1,5 @@
 /**
- * ch_entries_spsc.hpp - 
+ * ch_data_spsc.hpp - 
  * @author: Jonathan Beard
  * @version: Mon Aug  2 13:18:51 2021
  * 
@@ -17,34 +17,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CH_ENTRIES_SPSC_HPP
-#define CH_ENTRIES_SPSC_HPP  1
+#ifndef CH_DATA_SPSC_HPP
+#define CH_DATA_SPSC_HPP  1
 
 #include "bufferdefs.hpp"
 
 namespace ipc
 {
 
-struct alignas( (1<<ipc::block_size_power_two) ) ch_entries_spsc
+template < class T, int n_entries >
+struct alignas( (1<<ipc::block_size_power_two) ) ch_data_spsc
 {
     
-    constexpr ch_entries_spsc()
+    constexpr ch_data_spsc()
     {
      
     };
 
-    static constexpr auto n_entries = 
-        ( 1 << ipc::block_size_power_two) / sizeof( ipc::ptr_offset_t );
-
-    /**
-     * now for entries for spsc queue, for now let's just add to all, 
-     * even if it does waste an extra 4KiB of space. 
-     */
-    
-    ipc::ptr_offset_t entry[ n_entries ] = { ipc::invalid_ptr_offset };
+    T entry[ n_entries ] = { reinterpret_cast< T >( 0 ) };
 
 }; 
 
 } /** end namespace ipc **/
 
-#endif /* END CH_ENTRIES_SPSC_HPP */
+#endif /* END CH_DATA_SPSC_HPP */

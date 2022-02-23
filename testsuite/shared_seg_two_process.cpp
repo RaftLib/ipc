@@ -58,7 +58,7 @@ void producer(  const int count,
     auto *tls_producer      = ipc::buffer::get_tls_structure( buffer, thread_id );
     std::cout << "beginning: " << 
         ipc::meta_info::heap_t::get_current_free( &tls_producer->buffer->heap  ) << "\n";
-    if( ipc::buffer::add_spsc_lf_record_channel( tls_producer, 
+    if( ipc::buffer::add_channel< ipc::spsc_record >( tls_producer, 
                                                  channel_id, 
                                                  ipc::producer ) == ipc::channel_err )
     {
@@ -115,7 +115,7 @@ void consumer(  const int count,
     auto *tls_consumer      = ipc::buffer::get_tls_structure( buffer, 
                                                               thread_id );
 
-    if( ipc::buffer::add_spsc_lf_record_channel( tls_consumer, 
+    if( ipc::buffer::add_channel< ipc::spsc_record >( tls_consumer, 
                                                  channel_id, 
                                                  ipc::consumer ) == ipc::channel_err )
     {

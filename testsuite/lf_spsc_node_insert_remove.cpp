@@ -25,6 +25,7 @@
 #include "spsc_lock_free.hpp"
 #include "channelinfo.hpp"
 #include "recordindex.hpp"
+#include "meta_info.hpp"
 
 int main()
 {
@@ -35,18 +36,15 @@ int main()
 
     
     
-    using lf_queue_t = 
-        ipc::spsc_lock_free_queue< ipc::channel_info      /** control region **/, 
-                                   void                   /** lf node        **/,
-                                   ipc::translate_helper  /** translator     **/>;
+    using lf_queue_t = ipc::meta_info::spsc_lock_free; 
     
 
     auto *channel_info_obj = 
-        new (temp) ipc::channel_info( 0 );
+        new (temp) ipc::channel_info_record( 0 );
 
 
 
-    lf_queue_t::init( channel_info_obj );
+    lf_queue_t::init( channel_info_obj, nullptr );
 
     const auto block_multiple = (1 << ipc::block_size_power_two);
     

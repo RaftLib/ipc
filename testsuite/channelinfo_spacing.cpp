@@ -37,7 +37,6 @@ int main()
     std::cout << "meta: "      << alignof( decltype( ch_ptr->meta ) ) << "\n";
     std::cout << "ctrl_all: "  << alignof( decltype( ch_ptr->ctrl_all ) ) << "\n";
     std::cout << "ctrl_spsc: " << alignof( decltype( ch_ptr->ctrl_spsc ) ) << "\n";
-    std::cout << "spsc_q: "    << alignof( decltype( ch_ptr->spsc_q ) ) << "\n";
     
 
     auto convert = [&]( void *ptr, void *base ) -> auto
@@ -68,12 +67,6 @@ int main()
     if( (diff = convert( &ch_ptr->ctrl_spsc, buffer ) ) != (L1D_CACHE_LINE_SIZE*6) ) 
     {
         std::cout << "offset should be (384), but it is (" << diff << ")\n";
-        return( EXIT_FAILURE );
-    }
-    //this one should hit block boundary, otherwise we've broken something
-    if( (diff = convert( &ch_ptr->spsc_q, buffer    ) ) != 4096 ) 
-    {
-        std::cout << "offset should be (4096), but it is (" << diff << ")\n";
         return( EXIT_FAILURE );
     }
     free( buffer );

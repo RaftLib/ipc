@@ -47,15 +47,18 @@ private:
 public:
     
     using heap_t            = alloc::heap< buffer_size_pow_two, block_size_power_two >;
+    
     using channel_list_t    = lock_ll< channel_index_t, translate_helper >;
-    using mpmc_lock_free    = ipc::mpmc_lock_free_queue< ipc::channel_info,
+
+    using mpmc_lock_free    = ipc::mpmc_lock_free_queue< ipc::channel_info_record,
                                                          ipc::record_index_t, 
                                                          translate_helper >;
     
-    using spsc_lock_free    = ipc::spsc_lock_free_queue< ipc::channel_info,
+    using spsc_lock_free    = ipc::spsc_lock_free_queue< ipc::channel_info_record,
                                                          void,
                                                          translate_helper >;
-    using shm_seg           = ipc::shared_seg< ipc::channel_info /**reuse spsc**/, 
+
+    using shm_seg           = ipc::shared_seg< ipc::channel_info_record /**reuse spsc**/, 
                                                translate_helper >;
     
     meta_info()     = default;
