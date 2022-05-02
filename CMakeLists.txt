@@ -10,7 +10,7 @@ set( C_STANDARD ON )
 
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
-## for shm module
+## for shm module, don't use c++ exceptions
 set( CPP_EXCEPTIONS 0 )
 add_definitions( "-DUSE_CPP_EXCEPTIONS=0" )
 
@@ -26,8 +26,6 @@ if (HAS_ALIGNED_NEW)
 endif()
     
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -mtune=native")
-
-
 # Set a variable so that we can detect debug mode in cpp files
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
 
