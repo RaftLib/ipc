@@ -12,8 +12,10 @@
 int main()
 {
     ipc::buffer::register_signal_handlers();    
+    shm_key_t key;
+    ipc::buffer::gen_key( key, 42 );
     
-    auto *buffer = ipc::buffer::initialize( "thehandle"  );
+    auto *buffer = ipc::buffer::initialize( key  );
 
     auto channel_id = 1;
     auto thread_id = getpid();
@@ -26,9 +28,9 @@ int main()
     auto channel_list = ipc::buffer::get_channel_list( fake_tls );
     for( auto &pair : (*channel_list) )
     {
-    std::cout << pair.first << " - " << ipc::channel_type_names[ pair.second ] << "\n";
+        std::cout << pair.first << " - " << ipc::channel_type_names[ pair.second ] << "\n";
     }
     ipc::buffer::close_tls_structure( fake_tls );
-    ipc::buffer::destruct( buffer, "thehandle" );
+    ipc::buffer::destruct( buffer, key );
     return( EXIT_SUCCESS );
 }

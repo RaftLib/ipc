@@ -9,7 +9,10 @@
 int main()
 {
     ipc::buffer::register_signal_handlers();
-    auto *buffer = ipc::buffer::initialize( "thehandle" );
-    ipc::buffer::destruct( buffer, "thehandle" );
+    shm_key_t key;
+    ipc::buffer::gen_key( key, 42 );
+
+    auto *buffer = ipc::buffer::initialize( key );
+    ipc::buffer::destruct( buffer, key );
     return( EXIT_SUCCESS );
 }

@@ -21,7 +21,6 @@
 #define SPSC_LOCK_FREE_HPP  1
 #include "bufferdefs.hpp"
 #include "ch_entries_spsc.hpp"
-#include <cassert>
 
 namespace ipc
 {
@@ -139,6 +138,7 @@ TOP:
    {
       return( ipc::ch_entries_spsc::n_entries - self_t::size( channel ) );
    }
+
     
 
    
@@ -175,7 +175,7 @@ TOP:
      * that should allow this LF queue to translate buffer offsets into the 
      * calling VA space. 
      */
-    inline static ipc::tx_code push( PARENTNODE *channel, 
+    static ipc::tx_code push( PARENTNODE *channel, 
                               LOCKFREE_NODE *node_to_add, 
                               void *buffer_base )
     {
@@ -214,7 +214,7 @@ PUSH_RETRY:
     /**
      * pop - pop a node from the ring buffer
      */
-    inline static ipc::tx_code pop( PARENTNODE *channel, 
+    static ipc::tx_code pop( PARENTNODE *channel, 
                              LOCKFREE_NODE **receive_node, 
                              void *buffer_base )
     {

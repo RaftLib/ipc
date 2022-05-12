@@ -29,7 +29,6 @@ struct alignas(L1D_CACHE_LINE_SIZE) ch_ctrl_all
 {
     /** start of data allocated **/
     alignas( L1D_CACHE_LINE_SIZE ) ipc::ctrl_ptroffset_t    data_head   = { ipc::invalid_ptr_offset };
-    
     /** end of data allocated **/
     alignas( L1D_CACHE_LINE_SIZE ) ipc::ctrl_ptroffset_t    data_tail   = { ipc::invalid_ptr_offset };
 };
