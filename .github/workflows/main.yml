@@ -2,6 +2,7 @@ name: CI
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
+# USE_SYSTEMV_SEM
 on:
   push:
     branches: [ main ]
@@ -11,7 +12,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   
-  Linux:
+  Linux-PosixSHM-PosixSem:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -29,8 +30,70 @@ jobs:
     - name: 'Run CTest'
       run: ctest -C Release
       working-directory: "${{ github.workspace }}/../../_temp/linux"
-  
+    
+  Linux-PosixSHM-SysVSem:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: 'Run CMake'
+      uses: lukka/run-cmake@v2
+      with:
+        cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
+        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+        cmakeBuildType: Release  
+        buildDirectory: "${{ github.workspace }}/../../_temp/linux"
+        buildWithCMake: true
+        cmakeAppendedArgs: -DUSE_SYSTEMV_SEM=1 
+        buildWithCMakeArgs: --config Release  
         
+    - name: 'Run CTest'
+      run: ctest -C Release
+      working-directory: "${{ github.workspace }}/../../_temp/linux"
+      
+  Linux-SysVSHM-SysVSem:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: 'Run CMake'
+      uses: lukka/run-cmake@v2
+      with:
+        cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
+        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+        cmakeBuildType: Release  
+        buildDirectory: "${{ github.workspace }}/../../_temp/linux"
+        buildWithCMake: true
+        cmakeAppendedArgs: -DUSE_SYSTEMV_SEM=1 -DUSE_SYSV_SHM=1 
+        buildWithCMakeArgs: --config Release  
+        
+    - name: 'Run CTest'
+      run: ctest -C Release
+      working-directory: "${{ github.workspace }}/../../_temp/linux"
+      
+  Linux-SysVSHM-POSIXSem:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: 'Run CMake'
+      uses: lukka/run-cmake@v2
+      with:
+        cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
+        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+        cmakeBuildType: Release  
+        buildDirectory: "${{ github.workspace }}/../../_temp/linux"
+        buildWithCMake: true
+        cmakeAppendedArgs: -DUSE_SYSV_SHM=1 
+        buildWithCMakeArgs: --config Release  
+        
+    - name: 'Run CTest'
+      run: ctest -C Release
+      working-directory: "${{ github.workspace }}/../../_temp/linux"
+##
+# no posix semaphores on OS X 
+## 
+
   MacOS:
     runs-on: macos-latest
     steps:
@@ -44,6 +107,26 @@ jobs:
         buildDirectory: "${{ github.workspace }}/../../_temp/macos"
         buildWithCMake: true
         cmakeAppendedArgs: -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/../../_temp/macos/install"
+        buildWithCMakeArgs: --config Release
+        
+    - name: 'Run CTest'
+      run: ctest -C Release
+      working-directory: "${{ github.workspace }}/../../_temp/macos"
+      
+      
+  MacOS-SysV:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: 'Run CMake'
+      uses: lukka/run-cmake@v2
+      with:
+        cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
+        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+        cmakeBuildType: Release  
+        buildDirectory: "${{ github.workspace }}/../../_temp/macos"
+        buildWithCMake: true
+        cmakeAppendedArgs: -DUSE_SYSV_SHM=1 -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/../../_temp/macos/install"
         buildWithCMakeArgs: --config Release
         
     - name: 'Run CTest'
