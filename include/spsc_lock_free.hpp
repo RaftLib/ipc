@@ -189,6 +189,13 @@ PUSH_RETRY:
             channel->spsc_q.entry[ 
                 channel->ctrl_all.data_tail
             ] = offset_to_add;
+#if __aarch64__
+            /** 
+             * probably can get away with inner shareable 
+             * barrier only here, but just in case....
+             */
+            __asm__ volatile( "dsb st" : : : );
+#endif
             inc_tail( channel );
             channel->meta.prod_credits--;
             node_to_add = nullptr;
@@ -228,7 +235,15 @@ PUSH_RETRY:
 
         *receive_node =
             (LOCKFREE_NODE*) TRANSLATE::translate_block( buffer_base, offset );
-
+#if __aarch64__
+            /** 
+             * Capture pointer at this slot before incrementing
+             * given another agent can over-write it...not likely,
+             * but could happen.
+             */
+            __asm__ volatile( "dsb ld" : : : );
+#endif
+        
         self_t::inc_head( channel );
 
         //decrement credits
