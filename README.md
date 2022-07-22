@@ -13,7 +13,7 @@ Currently implemented is the following:
 you want till you run out of memory).
 - named static shared memory segment (as a channel) which can be used for synchronization or other purposes where message passing semantics aren't useful. 
 
-## Status
+## Status - [![CI](https://github.com/RaftLib/ipc/actions/workflows/main.yml/badge.svg)](https://github.com/RaftLib/ipc/actions/workflows/main.yml)
 Currently testing the following combinations
 - Linux
   - POSIX SHM + POSIX Semaphores
@@ -23,7 +23,7 @@ Currently testing the following combinations
 - OS X
   - POSIX SHM + SystemV Semaphores
   
-[![CI](https://github.com/RaftLib/ipc/actions/workflows/main.yml/badge.svg)](https://github.com/RaftLib/ipc/actions/workflows/main.yml)
+
 
 
 ## Why
