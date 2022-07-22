@@ -76,12 +76,13 @@ ipc::buffer::buffer() : buffer_base()
 }
 
 ipc::buffer*
-ipc::buffer::initialize( const std::string shm_handle )
+ipc::buffer::initialize( const shm_key_t &shm_handle )
 {
-    //stupid sanity check
-    assert( shm_handle.length() > 0 );
-
-    ipc::buffer::gb_err.shm_handle = shm_handle;
+    if( ! shm::key_copy( ipc::buffer::gb_err.shm_handle, shm_handle ) )
+    {
+        ipc::buffer::gb_err.err_msg << "Failed to copy shared memory handle to error stream, exiting!" ;
+        shutdown_handler( 0 );
+    }
 
     /** constants **/
     const auto buffer_size_nbytes   = 1 << ipc::buffer_size_pow_two;
@@ -200,6 +201,20 @@ ipc::buffer::initialize( const std::string shm_handle )
     return( out_buffer );
 }
 
+
+void 
+ipc::buffer::gen_key( shm_key_t &key, const int proj_id )
+{
+    /**
+     * right now this is a wrapper for the shm version,
+     * no special handling needed, but, figured it's 
+     * better to hide this if we want to change out the
+     * underlying shared memory framework at some point
+     * without changing the interface. 
+     */
+    shm::gen_key( key, proj_id );
+}
+
 std::string 
 ipc::buffer::get_tmp_dir()
 {
@@ -221,7 +236,7 @@ ipc::buffer::get_tmp_dir()
 
 void
 ipc::buffer::destruct( ipc::buffer *b,
-                       const std::string &shm_handle,
+                       const shm_key_t &shm_handle,
                        const bool unlink,
                        const bool unmap )
 {
@@ -1232,7 +1247,6 @@ ipc::buffer::free_record(   ipc::thread_local_data *data,
     
     const auto blocks_to_free = meta_multiple + meta_data->block_count;
     
-    
     ipc::buffer::_free( data, 
                         meta_offset,
                         blocks_to_free );
@@ -1361,6 +1375,7 @@ ipc::buffer::receive_record( ipc::thread_local_data *tls_data,
                 ipc::buffer::spsc_lock_free::pop( channel_info, 
                                                   record, 
                                                   &tls_data->buffer->data );
+            
         }
         break;
         default:

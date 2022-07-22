@@ -13,7 +13,9 @@ int main()
 {
     
     ipc::buffer::register_signal_handlers(); 
-    auto *buffer = ipc::buffer::initialize( "thehandle"  );
+    shm_key_t key;
+    ipc::buffer::gen_key( key, 42 );
+    auto *buffer = ipc::buffer::initialize( key  );
 
     auto channel_id = 1;
     auto thread_id = getpid();
@@ -62,7 +64,7 @@ int main()
     if( ptr == nullptr )
     {
         std::cerr << "Failed at allocate\n";
-        ipc::buffer::destruct( buffer, "thehandle" );
+        ipc::buffer::destruct( buffer, key );
         exit( EXIT_FAILURE );
     }
     for( auto i( 0 ); i < 128; i++ )
@@ -92,6 +94,6 @@ int main()
     std::cout << 
         ipc::meta_info::heap_t::get_current_free( &fake_tls->buffer->heap  ) << " - should be (262144)\n"; 
 
-    ipc::buffer::destruct( buffer, "thehandle" );
+    ipc::buffer::destruct( buffer, key );
     return( EXIT_SUCCESS );
 }

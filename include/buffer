@@ -33,8 +33,8 @@
 #include "bufferdefs.hpp"
 #include "shared_seg.hpp"
 #include "buffer_base.hpp"
-    
-
+/** only for shm_key_t **/
+#include "shm_module.hpp"
 
 namespace ipc
 {
@@ -43,7 +43,7 @@ struct global_err_t
 {
     std::stringstream err_msg;
     ipc::buffer       *buffer = nullptr;
-    std::string       shm_handle;
+    shm_key_t         shm_handle;
 };
 
 
@@ -155,7 +155,9 @@ public:
 
     buffer();
     ~buffer() = default;
-    
+
+    static void gen_key( shm_key_t &key, const int proj_id );
+
     /**
      * err handling call-back for the buffer, 
      * 1) closes semaphores
@@ -263,7 +265,7 @@ public:
      * @throws - see shm header file for errors.
      */
     static
-    ipc::buffer*   initialize( const std::string shm_handle );
+    ipc::buffer*   initialize( const shm_key_t &shm_handle );
 
 
     /**
@@ -280,7 +282,7 @@ public:
      */
     static
     void                    destruct( ipc::buffer *b,
-                                      const std::string &shm_handle,
+                                      const shm_key_t &shm_handle,
                                       const bool unlink = true,
                                       const bool unmap  = true );
     /**

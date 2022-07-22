@@ -28,12 +28,6 @@
 #include <buffer>
 
 
-using lf_queue_t = 
-    ipc::spsc_lock_free_queue< ipc::channel_info      /** control region **/, 
-                               void                   /** lf node        **/,
-                               ipc::translate_helper  /** translator     **/>;
-
-using gate_t = std::atomic< int >;
 
 void producer(  const int count, 
                 const ipc::channel_id_t channel_id, 
@@ -46,7 +40,7 @@ void producer(  const int count,
         return;
     }
     
-
+    std::cout << "count should be: " << count << "\n";
     for( int i( 0 ); i < count ; i++ )
     {
         int *output = 
@@ -70,7 +64,6 @@ void consumer(  const int count,
         return;
     }
     
-
     void *record = nullptr;
     auto count_tracker( 0 );
     int value = ~0;
@@ -79,6 +72,7 @@ void consumer(  const int count,
         
         while( ipc::buffer::receive_record( tls_consumer, channel_id, &record ) != ipc::tx_success );
         value = *(int*)record;
+        std::cout << value << "\n";
 
         ipc::buffer::free_record( tls_consumer, record );
         //check that each block returned has the same size
@@ -102,6 +96,8 @@ int main( int argc, char **argv )
     ipc::buffer::register_signal_handlers();
 
     const auto channel_id   = 1;
+    shm_key_t key;
+    ipc::buffer::gen_key( key, 42 );
 
     //max count is 30 - 12 or (1<<18)
     //this should be bigger than the buffer size, we wanna make 
@@ -133,7 +129,7 @@ int main( int argc, char **argv )
         }
     }
     
-    auto *buffer = ipc::buffer::initialize( "thehandle"  );
+    auto *buffer = ipc::buffer::initialize( key  );
     if( is_producer )
     {
         producer(  count, 
@@ -143,14 +139,14 @@ int main( int argc, char **argv )
         //we'll make the producer the main
         int status = 0;
         waitpid( -1, &status, 0 );
-        ipc::buffer::destruct( buffer, "thehandle" );
+        ipc::buffer::destruct( buffer, key );
     }
     else
     {
         consumer(  count, 
                    channel_id, 
                    buffer );
-        ipc::buffer::destruct( buffer, "thehandle", false );
+        ipc::buffer::destruct( buffer, key, false );
 
     }
     //buffer shouldn't destruct completely till everybody 

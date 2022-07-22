@@ -21,7 +21,6 @@
 #define SPSC_LOCK_FREE_HPP  1
 #include "bufferdefs.hpp"
 #include "ch_entries_spsc.hpp"
-#include <cassert>
 
 namespace ipc
 {
@@ -139,6 +138,7 @@ TOP:
    {
       return( ipc::ch_entries_spsc::n_entries - self_t::size( channel ) );
    }
+
     
 
    
@@ -175,7 +175,7 @@ TOP:
      * that should allow this LF queue to translate buffer offsets into the 
      * calling VA space. 
      */
-    inline static ipc::tx_code push( PARENTNODE *channel, 
+    static ipc::tx_code push( PARENTNODE *channel, 
                               LOCKFREE_NODE *node_to_add, 
                               void *buffer_base )
     {
@@ -189,6 +189,13 @@ PUSH_RETRY:
             channel->spsc_q.entry[ 
                 channel->ctrl_all.data_tail
             ] = offset_to_add;
+#if __aarch64__
+            /** 
+             * probably can get away with inner shareable 
+             * barrier only here, but just in case....
+             */
+            __asm__ volatile( "dsb st" : : : );
+#endif
             inc_tail( channel );
             channel->meta.prod_credits--;
             node_to_add = nullptr;
@@ -214,7 +221,7 @@ PUSH_RETRY:
     /**
      * pop - pop a node from the ring buffer
      */
-    inline static ipc::tx_code pop( PARENTNODE *channel, 
+    static ipc::tx_code pop( PARENTNODE *channel, 
                              LOCKFREE_NODE **receive_node, 
                              void *buffer_base )
     {
@@ -228,7 +235,15 @@ PUSH_RETRY:
 
         *receive_node =
             (LOCKFREE_NODE*) TRANSLATE::translate_block( buffer_base, offset );
-
+#if __aarch64__
+            /** 
+             * Capture pointer at this slot before incrementing
+             * given another agent can over-write it...not likely,
+             * but could happen.
+             */
+            __asm__ volatile( "dsb ld" : : : );
+#endif
+        
         self_t::inc_head( channel );
 
         //decrement credits

@@ -187,6 +187,8 @@ int main( int argc, char **argv )
     ipc::buffer::register_signal_handlers();
 
     const auto channel_id   = 1;
+    shm_key_t key;
+    ipc::buffer::gen_key( key, 42 );
 
     //max count is 30 - 12 or (1<<18)
     //this should be bigger than the buffer size, we wanna make 
@@ -218,7 +220,7 @@ int main( int argc, char **argv )
         }
     }
     
-    auto *buffer = ipc::buffer::initialize( "thehandle"  );
+    auto *buffer = ipc::buffer::initialize( key  );
     if( is_producer )
     {
         producer(  count, 
@@ -228,14 +230,14 @@ int main( int argc, char **argv )
         //we'll make the producer the main
         int status = 0;
         waitpid( -1, &status, 0 );
-        ipc::buffer::destruct( buffer, "thehandle" );
+        ipc::buffer::destruct( buffer, key );
     }
     else
     {
         consumer(  count, 
                    channel_id, 
                    buffer );
-        ipc::buffer::destruct( buffer, "thehandle", false );
+        ipc::buffer::destruct( buffer, key, false );
 
     }
     //buffer shouldn't destruct completely till everybody 
