@@ -13,6 +13,19 @@ Currently implemented is the following:
 you want till you run out of memory).
 - named static shared memory segment (as a channel) which can be used for synchronization or other purposes where message passing semantics aren't useful. 
 
+## Status
+Currently testing the following combinations
+- Linux
+  - POSIX SHM + POSIX Semaphores
+  - POSIX SHM + SystemV Semaphors
+  - SystemV SHM + POSIX Semaphores
+  - SystemV SHM + SystemV Semaphors
+- OS X
+  - POSIX SHM + SystemV Semaphores
+  
+[![CI](https://github.com/RaftLib/ipc/actions/workflows/main.yml/badge.svg)](https://github.com/RaftLib/ipc/actions/workflows/main.yml)
+
+
 ## Why
 * Lack of existing simple point-to-point multi-process
 allocation and communication mechanisms. 
