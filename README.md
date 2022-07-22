@@ -85,4 +85,5 @@ Will add more notes soon. Most complete example with two
 processes and two threads (1 process communicating with 
 another process that has two threads) is [here](https://github.com/RaftLib/ipc/blob/main/testsuite/spsc_two_processes_multi_channel.cpp)
 
-
+- NOTE: the combination of OS X + SystemV Shared Memory + SystemV Semaphores is currently 
+not passing tests, will investigate. All other combinations on OS X and Linux work. 

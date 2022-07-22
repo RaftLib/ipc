@@ -112,24 +112,3 @@ jobs:
     - name: 'Run CTest'
       run: ctest -C Release
       working-directory: "${{ github.workspace }}/../../_temp/macos"
-      
-      
-  MacOS-SysV:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: 'Run CMake'
-      uses: lukka/run-cmake@v2
-      with:
-        cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
-        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-        cmakeBuildType: Release  
-        buildDirectory: "${{ github.workspace }}/../../_temp/macos"
-        buildWithCMake: true
-        cmakeAppendedArgs: -DUSE_SYSV_SHM=1 -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/../../_temp/macos/install"
-        buildWithCMakeArgs: --config Release
-        
-    - name: 'Run CTest'
-      run: ctest -C Release
-      working-directory: "${{ github.workspace }}/../../_temp/macos"
-        
