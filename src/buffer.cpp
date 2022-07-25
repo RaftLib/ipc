@@ -554,7 +554,8 @@ ipc::buffer::get_record_size( ipc::thread_local_data *data, void *ptr )
 bool
 ipc::buffer::has_active_channels( ipc::thread_local_data *tls )
 {
-    return( ipc::buffer::channel_list_t::size( &tls->buffer->channel_list ) != 0 );  
+    const auto size = ipc::buffer::channel_list_t::size( &tls->buffer->channel_list );
+    return( size != 0 );  
 }
 
 
@@ -564,6 +565,7 @@ ipc::buffer::has_channel( ipc::thread_local_data *tls, const ipc::channel_id_t c
     bool found = false;
     ipc::channel_info *ch_st = nullptr;
     do{
+    //FIXME
     //come back here
         if( ipc::buffer::find_channel( tls, channel, &ch_st ) !=  ipc::channel_not_found )
         {
@@ -1394,10 +1396,7 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
     ipc::thread_local_data *ptr = nullptr;
     //called in the context of the calling thread ID
     ptr = new thread_local_data();
-    errno = 0;
     
-    
-
     ptr->index_semaphore    = ipc::sem::open( 
         buffer->index_sem_name,
         0x0,
@@ -1422,7 +1421,11 @@ ipc::buffer::get_tls_structure( ipc::buffer *buffer,
         shutdown_handler( 0 );
     }
 
-    //call subinit function
+    /**
+     * call subinit function, looks funny but it's b/c we've
+     * wrapped both POSIX and SystemV semaphores into a single
+     * initialization interface. 
+     */
     if( ipc::sem::sub_init( ptr->allocate_semaphore ) == -1 )
     {
         ipc::buffer::gb_err.err_msg << "failed to initialize semaphore"; 

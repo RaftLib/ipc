@@ -11,6 +11,7 @@ set( TESTAPPS #list apps
         channelinfo_spacing
         genericnode
         haschannels
+        haschannel
         locked_node_insert
         locked_node_remove
         locked_node_find
