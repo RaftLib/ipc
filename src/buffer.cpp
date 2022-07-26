@@ -433,19 +433,22 @@ ipc::buffer::add_channel( ipc::thread_local_data    *data,
     {
         case( ipc::producer ):
         {
-            channel->meta.ref_count_prod++ /** atomic inc **/;
+            channel->meta.ref_count_prod.fetch_add( 1, 
+                                                    std::memory_order_acq_rel )/** atomic inc **/;
         }
         break;
         case( ipc::consumer ):
         {
-            channel->meta.ref_count_cons++ /** atomic inc **/;
+            channel->meta.ref_count_cons.fetch_add( 1, 
+                                                    std::memory_order_acq_rel )/** atomic inc **/;
         }
         break;
         case( ipc::dir_not_set ):
         {
             if( channel->meta.type == ipc::shared )
             {
-                channel->meta.ref_count_shd++ /** atomic inc **/;
+                channel->meta.ref_count_shd.fetch_add( 1,
+                                                       std::memory_order_acq_rel )/** atomic inc **/;
             }
         }
         break;
@@ -585,7 +588,10 @@ ipc::buffer::channel_has_producers( ipc::thread_local_data *tls, const ipc::chan
         return( false );
     }
     //else
-    return( (*(*found).second).meta.ref_count_prod > 0 );
+    const auto prod_count = (*(*found).second).meta.ref_count_prod.load( 
+                                std::memory_order_consume
+                            );
+    return(  prod_count > 0 );
 }
     
 
@@ -771,6 +777,7 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
      * Acquire semaphore, must go after allocate otherwise we have 
      * nested semaphore acquire and deadlock.
      */
+#if 0 //with atomic refcnt don't need this here     
     auto sem = tls->index_semaphore;
     if( ipc::sem::wait( sem ) == ipc::sem::uni_error )
     {
@@ -779,10 +786,11 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
              " with sem value: " << sem;
         shutdown_handler( 0 );
     }
-    
+#endif    
     /**
      * these are not atomic, do not move outside of semaphore!!
      * two directions on the channel, producer or consumer
+     * - correction, they're now atomic....
      */
     switch( th_local_allocation.dir )
     {
@@ -793,20 +801,20 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
         case( ipc::producer ):
         {
             //this part needs index sem
-            --(ch_ptr->meta.ref_count_prod);
+            (ch_ptr->meta.ref_count_prod).fetch_sub( 1, std::memory_order_acq_rel );
         }
         break;
         case( ipc::consumer ):
         {
             //this part needs index sem
-            --(ch_ptr->meta.ref_count_cons);
+            (ch_ptr->meta.ref_count_cons).fetch_sub( 1, std::memory_order_acq_rel );
         }
         break;
         case( ipc::dir_not_set ):
         {
             if( ch_ptr->meta.type == ipc::shared )
             {
-                --(ch_ptr->meta.ref_count_shd);
+                (ch_ptr->meta.ref_count_shd).fetch_sub( 1, std::memory_order_acq_rel );
             }
         }
         break;
@@ -817,7 +825,7 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
         }
     }
 
-
+#if 0 //now that the refcnt is atomic, don't need this here. 
     /** release sem **/
     if( ipc::sem::post( sem ) == ipc::sem::uni_error )
     {
@@ -826,12 +834,17 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
                 "sem val(" << sem << ") @ line " << __LINE__;
         shutdown_handler( 0 );
     }
+#endif    
     switch( ch_ptr->meta.type )
     {
         case( ipc::spsc_record ):
         case( ipc::mpmc_record ):
         {
-            if( ch_ptr->meta.ref_count_prod == 0 && ch_ptr->meta.ref_count_cons == 0 )
+            const auto value_prod = 
+                ch_ptr->meta.ref_count_prod.load( std::memory_order_acquire );
+            const auto value_cons = 
+                ch_ptr->meta.ref_count_cons.load( std::memory_order_acquire );
+            if( value_prod  == 0 && value_cons == 0 )
             {
                 ipc::buffer::remove_channel( tls, channel );
             }
@@ -840,7 +853,9 @@ ipc::buffer::unlink_channel( ipc::thread_local_data *tls, ipc::channel_id_t chan
         break;
         case( ipc::shared ):
         {
-            if( ch_ptr->meta.ref_count_shd == 0 )
+            const auto value_shd = 
+                ch_ptr->meta.ref_count_shd.load( std::memory_order_acquire );
+            if( value_shd == 0 )
             {
                 ipc::buffer::remove_channel( tls, channel );
             }
@@ -874,6 +889,7 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
          * must get semaphore first.
          */
 
+#if 0 //removed sem acq/rel b/c changed refcount to atomic
         /**
          * Acquire semaphore, must go after allocate otherwise we have 
          * nested semaphore acquire and deadlock.
@@ -886,27 +902,27 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
                  " with sem value: " << sem;
             shutdown_handler( 0 );
         }
-    
+#endif    
         //two directions on the channel, producer or consumer
         switch( th_local_allocation.dir )
         {
             case( ipc::producer ):
             {
                 //this part needs index sem
-                --(ch_ptr->meta.ref_count_prod);
+                ch_ptr->meta.ref_count_prod.fetch_sub( 1, std::memory_order_acq_rel );
             }
             break;
             case( ipc::consumer ):
             {
                 //this part needs index sem
-                --(ch_ptr->meta.ref_count_cons);
+                ch_ptr->meta.ref_count_cons.fetch_sub( 1, std::memory_order_acq_rel );
             }
             break;
             case( ipc::dir_not_set ):
             {
                 if( ch_ptr->meta.type == ipc::shared )
                 {
-                    --(ch_ptr->meta.ref_count_shd);
+                    ch_ptr->meta.ref_count_shd.fetch_sub( 1, std::memory_order_acq_rel );
                 }
             }
             break;
@@ -917,7 +933,7 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
             }
         }
 
-
+#if 0 //removed sem acq/rel b/c changed refcount to atomic
         /** release sem **/
         if( ipc::sem::post( sem ) == ipc::sem::uni_error )
         {
@@ -926,8 +942,10 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
                     "sem val(" << sem << ") @ line " << __LINE__;
             shutdown_handler( 0 );
         }
-        
-        if( ch_ptr->meta.ref_count_prod == 0 && ch_ptr->meta.ref_count_cons == 0 )
+#endif        
+        const auto prod_val = ch_ptr->meta.ref_count_prod.load( std::memory_order_acquire );
+        const auto cons_val = ch_ptr->meta.ref_count_cons.load( std::memory_order_acquire );
+        if( prod_val == 0 && cons_val == 0 )
         {
             ipc::buffer::remove_channel( tls, ch_pair.first );
         }

@@ -68,7 +68,7 @@ namespace ipc
     };
     
     
-    using refcnt_t       = std::int32_t;
+    using refcnt_t       = std::atomic< std::int32_t >;
 
     using channel_id_t   = ptr_offset_t;
     
