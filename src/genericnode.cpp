@@ -18,7 +18,7 @@ ipc::nodebase::add_link ( nodebase *parent,
                           const ipc::ptr_offset_t child_offset )
 {
     assert( parent->next == ipc::nodebase::init_offset() );
-    parent->next = child_offset;
+    parent->next.store( child_offset, std::memory_order_release );
     child->prev  = parent_offset;
     return;
 }

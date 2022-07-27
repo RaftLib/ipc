@@ -138,7 +138,6 @@ public:
             /** next is the one we want to make the start..momentarily **/
             ll->start = curr_node->next;
             next->prev = ipc::nodebase::init_offset();
-            next->next = ipc::nodebase::init_offset();
             curr_node->prev = ipc::nodebase::init_offset();
             curr_node->next = ipc::nodebase::init_offset();
             ll->node_count--;
@@ -149,7 +148,6 @@ public:
             /** next is the one we want to make the start..momentarily **/
             ll->end = curr_node->prev;
             
-            previous->prev = ipc::nodebase::init_offset();
             previous->next = ipc::nodebase::init_offset();
 
             curr_node->prev = ipc::nodebase::init_offset();
