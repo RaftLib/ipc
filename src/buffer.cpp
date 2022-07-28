@@ -945,7 +945,8 @@ ipc::buffer::unlink_channels( ipc::thread_local_data *tls )
 #endif        
         const auto prod_val = ch_ptr->meta.ref_count_prod.load( std::memory_order_acquire );
         const auto cons_val = ch_ptr->meta.ref_count_cons.load( std::memory_order_acquire );
-        if( prod_val == 0 && cons_val == 0 )
+        const auto shd_val  = ch_ptr->meta.ref_count_shd.load( std::memory_order_acquire );
+        if( prod_val == 0 && cons_val == 0 && shd_val == 0 )
         {
             ipc::buffer::remove_channel( tls, ch_pair.first );
         }
