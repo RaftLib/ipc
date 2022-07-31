@@ -45,11 +45,14 @@ include( ${CMAKE_CURRENT_SOURCE_DIR}/modules/localmodules.cmake )
 
 
 mark_as_advanced( USE_SYSTEMV_SEM )
+
+if( NOT DEFINED USE_SYSTEMV_SEM_DEFAULT )
 if( APPLE )
 set( USE_SYSTEMV_SEM_DEFAULT true )
 else( APPLE )
 set( USE_SYSTEMV_SEM_DEFAULT false )
 endif( APPLE )
+endif()
 
 set( USE_SYSTEMV_SEM ${USE_SYSTEMV_SEM_DEFAULT} CACHE BOOL "Enable use of SystemV semaphore behavior vs. POSIX semaphores." )
 if( USE_SYSTEMV_SEM )
