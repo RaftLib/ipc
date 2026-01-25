@@ -43,16 +43,21 @@ ipc::buffer::shutdown_handler( int signum )
     std::cerr << "Shutting down ipc buffer\n";
     std::perror( ipc::buffer::gb_err.err_msg.str().c_str() );
     UNUSED( signum );
-        
+    auto *buffer = ipc::buffer::gb_err.buffer;
+    if( buffer == nullptr )
+    {
+        return;
+    }
+
     //get rid of semaphores, doesn't matter if these fail
-    ipc::sem::final_close( ipc::buffer::gb_err.buffer->index_sem_name );
-    ipc::sem::final_close( ipc::buffer::gb_err.buffer->alloc_sem_name );
+    ipc::sem::final_close( buffer->index_sem_name );
+    ipc::sem::final_close( buffer->alloc_sem_name );
     
     std::cerr << "ipc::buffer::gb_err: " << ipc::buffer::gb_err.shm_handle << "\n";
     //give this a shot even if it's null
     shm::close( ipc::buffer::gb_err.shm_handle,
-                (void**)&ipc::buffer::gb_err.buffer,
-                ipc::buffer::gb_err.buffer->allocated_size,
+                (void**)&buffer,
+                buffer->allocated_size,
                 false,
                 true );
 }
@@ -63,10 +68,12 @@ void ipc::buffer::register_signal_handlers()
     sigemptyset( &action.sa_mask );
     action.sa_flags = 0;
     action.sa_handler = ipc::buffer::shutdown_handler;
-    sigaction (SIGUSR1, &action, nullptr );
-    sigaction (SIGSEGV, &action, nullptr );
-    sigaction (SIGKILL, &action, nullptr );
-    sigaction (SIGINT,  &action, nullptr );
+    sigaction( SIGUSR1, &action, nullptr );
+    sigaction( SIGSEGV, &action, nullptr );
+    sigaction( SIGINT,  &action, nullptr );
+    sigaction( SIGTERM, &action, nullptr );
+    sigaction( SIGABRT, &action, nullptr );
+    sigaction( SIGHUP,  &action, nullptr );
 }
 
 
