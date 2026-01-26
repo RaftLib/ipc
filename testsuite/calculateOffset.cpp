@@ -11,13 +11,26 @@ int main()
 {
 
 
-    char *base = (char*)malloc( (1 << ipc::buffer_size_pow_two ) );
+    char *base = nullptr;
+    base = reinterpret_cast<char*>( std::malloc( (1 << ipc::buffer_size_pow_two ) ) );
+    if( base == nullptr )
+    {
+        std::cerr << "malloc failed\n";
+        return( EXIT_FAILURE );
+    }
 
-
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
     const auto offset1 = ipc::buffer::calculate_buffer_offset( base, (void*)(base));
-    const auto offset3 = ipc::buffer::calculate_buffer_offset( base, (void*)(base-1));
+    const auto offset3 = ipc::buffer::calculate_buffer_offset( base, (void*)(base - 1));
     const auto offset5 = ipc::buffer::calculate_buffer_offset( base, (void*)(0));
-    const auto offset6 = ipc::buffer::calculate_buffer_offset( base, (void*)(base + ( 1<<ipc::buffer_size_pow_two )+1 ) );
+    const auto offset6 = ipc::buffer::calculate_buffer_offset( base,
+        (void*)(base + ( 1<<ipc::buffer_size_pow_two )+1 ) );
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 
     /** Offsets should be zero */
@@ -48,6 +61,6 @@ int main()
         return( EXIT_FAILURE );
     }
 
-    free( base );
+    std::free( base );
     return( EXIT_SUCCESS );
 }
